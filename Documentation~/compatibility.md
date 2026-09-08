@@ -16,6 +16,7 @@ The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 
 | Unity 6000.5.8f1 | Local UPM, sample not imported | **283/283 passed** |
 | Unity 6000.5.8f1 | Local UPM + official Package Manager sample import | **285/285 passed** |
 | Unity 6000.6.0f1 | Local UPM + official Package Manager sample import | **285/285 passed** |
+| Unity 6000.6.0f1 | Public GitHub Git URL + official sample import | **285/285 passed** |
 
 Each host had an empty Assets directory before installation (apart from the sample-import validation helper). Core tests do not depend on the optional sample. These were batch Edit Mode checks on Linux, not Play Mode or player-build checks.
 
