@@ -1,0 +1,6 @@
+{
+  "name": "RCurve.Tests.Support",
+  "references": ["RCurve.Unity"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

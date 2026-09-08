@@ -1,0 +1,5 @@
+{
+  "name": "RCurve.Demo.Editor",
+  "references": ["RCurve.Runtime", "RCurve.Unity", "RCurve.Editor", "RCurve.Demo", "Unity.ugui"],
+  "includePlatforms": ["Editor"]
+}

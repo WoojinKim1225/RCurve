@@ -1,0 +1,5 @@
+{
+  "name": "RCurve.Burst",
+  "rootNamespace": "RCurve",
+  "references": ["RCurve.Runtime"]
+}

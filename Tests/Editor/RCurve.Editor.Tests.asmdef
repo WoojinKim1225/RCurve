@@ -1,0 +1,7 @@
+{
+  "name": "RCurve.Editor.Tests",
+  "references": ["RCurve.Runtime", "RCurve.Unity", "RCurve.Editor", "RCurve.Tests.Support", "Unity.Mathematics"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

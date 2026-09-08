@@ -1,0 +1,6 @@
+{
+  "name": "RCurve.Editor",
+  "rootNamespace": "RCurve.Editor",
+  "references": ["RCurve.Runtime", "RCurve.Unity", "Unity.Mathematics"],
+  "includePlatforms": ["Editor"]
+}

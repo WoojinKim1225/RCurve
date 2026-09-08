@@ -1,0 +1,5 @@
+{
+  "name": "RCurve.Demo",
+  "rootNamespace": "RCurve.Demo",
+  "references": ["RCurve.Runtime", "RCurve.Unity", "Unity.ugui"]
+}
