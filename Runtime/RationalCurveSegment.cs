@@ -96,11 +96,11 @@ namespace RCurve
             }
         }
 
-        public double Evaluate(double x)
+        public double Evaluate(double time)
         {
-            double u = Normalize(x);
-            if (x == _start) return _startValue;
-            if (x == _end) return _endValue;
+            double u = Normalize(time);
+            if (time == _start) return _startValue;
+            if (time == _end) return _endValue;
             bool reverse = u > 0.5;
             double t = reverse ? (1 - u) / u : u / (1 - u);
             int index = reverse ? 0 : Degree;
@@ -116,12 +116,12 @@ namespace RCurve
             return p / q;
         }
 
-        public double EvaluateSlope(double x)
+        public double EvaluateSlope(double time)
         {
-            double u = Normalize(x);
+            double u = Normalize(time);
             // Preserve authored endpoint slopes without cancellation in the quotient rule.
-            if (x == _start) return _startSlope;
-            if (x == _end) return _endSlope;
+            if (time == _start) return _startSlope;
+            if (time == _end) return _endSlope;
             bool reverse = u > 0.5;
             double denominator = reverse ? u : 1 - u;
             double t = (reverse ? 1 - u : u) / denominator;
@@ -140,15 +140,13 @@ namespace RCurve
             return (dp - (p / q) * dq) / q * (reverse ? -1 : 1) / (denominator * denominator) * _inverseLength;
         }
 
-        public double EvaluateDerivative(double x) => EvaluateSlope(x);
-
-        private double Normalize(double x)
+        private double Normalize(double time)
         {
-            RequireFinite(x, nameof(x));
+            RequireFinite(time, nameof(time));
             // Positivity is guaranteed only inside this interval; do not extrapolate.
-            if (x < _start || x > _end)
-                throw new ArgumentOutOfRangeException(nameof(x));
-            return Math.Max(0, Math.Min(1, (x - _start) * _inverseLength));
+            if (time < _start || time > _end)
+                throw new ArgumentOutOfRangeException(nameof(time));
+            return Math.Max(0, Math.Min(1, (time - _start) * _inverseLength));
         }
 
         // With t=u/(1-u), the common (1-u)^n factor cancels in P/Q. For u>1/2

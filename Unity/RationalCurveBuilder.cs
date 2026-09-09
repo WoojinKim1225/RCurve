@@ -11,27 +11,27 @@ namespace RCurve
             if (source == null) throw new ArgumentNullException(nameof(source));
             settings ??= new CurveFitSettings();
             settings.Validate();
-            CurveWrapMode pre = ConvertWrapMode(source.preWrapMode);
-            CurveWrapMode post = ConvertWrapMode(source.postWrapMode);
-            AnimationCurveBezierSegment[] originals = AnimationCurveBezierSegment.FromCurve(source);
-            if (originals.Length == 0) return FromSegments(source, Array.Empty<RationalCurveSegment>(), settings.LookupMode);
-            var times = new List<double> { originals[0].StartTime };
-            var values = new List<double> { originals[0].P0.y };
+            CurveWrapMode preWrapMode = ConvertWrapMode(source.preWrapMode);
+            CurveWrapMode postWrapMode = ConvertWrapMode(source.postWrapMode);
+            AnimationCurveBezierSegment[] sourceSegments = AnimationCurveBezierSegment.FromCurve(source);
+            if (sourceSegments.Length == 0) return FromSegments(source, Array.Empty<RationalCurveSegment>(), settings.LookupMode);
+            var times = new List<double> { sourceSegments[0].StartTime };
+            var values = new List<double> { sourceSegments[0].P0.y };
             var segments = new List<RationalCurveSegment>();
-            foreach (AnimationCurveBezierSegment original in originals)
+            foreach (AnimationCurveBezierSegment sourceSegment in sourceSegments)
             {
-                if (original.IsStep)
+                if (sourceSegment.IsStep)
                 {
-                    times.Add(original.EndTime);
-                    values.Add(original.P3.y);
+                    times.Add(sourceSegment.EndTime);
+                    values.Add(sourceSegment.P3.y);
                     segments.Add(null);
                     continue;
                 }
-                if (original.HasStationaryX)
+                if (sourceSegment.HasStationaryX)
                     throw new NotSupportedException("A zero-length handle or stationary X needs separate tangent analysis. Increase the handle weight before fitting.");
-                FitInterval(original, 0, 1, 0, settings, times, values, segments);
+                FitInterval(sourceSegment, 0, 1, 0, settings, times, values, segments);
             }
-            return Assemble(times.ToArray(), values.ToArray(), segments.ToArray(), pre, post, settings.LookupMode);
+            return Assemble(times.ToArray(), values.ToArray(), segments.ToArray(), preWrapMode, postWrapMode, settings.LookupMode);
         }
 
         private static void FitInterval(AnimationCurveBezierSegment source, double left, double right, int depth,
@@ -55,7 +55,7 @@ namespace RCurve
                 Sample(source, left + (right - left) * u, out double value, out double slope);
                 double time = i == 128 ? end : start + (end - start) * u;
                 if (!(Math.Abs(segment.Evaluate(time) - value) <= settings.MaxValueError) ||
-                    !(Math.Abs(segment.EvaluateDerivative(time) - slope) <= settings.MaxSlopeError))
+                    !(Math.Abs(segment.EvaluateSlope(time) - slope) <= settings.MaxSlopeError))
                 {
                     valid = false;
                     break;
@@ -75,23 +75,23 @@ namespace RCurve
             FitInterval(source, middle, right, depth + 1, settings, times, values, segments);
         }
 
-        private static void Sample(AnimationCurveBezierSegment source, double x, out double value, out double slope)
+        private static void Sample(AnimationCurveBezierSegment source, double normalizedTime, out double value, out double slope)
         {
-            double t = x;
-            if (x > 0 && x < 1)
+            double bezierParameter = normalizedTime;
+            if (normalizedTime > 0 && normalizedTime < 1)
             {
                 double low = 0;
                 double high = 1;
                 for (int i = 0; i < 55; i++)
                 {
-                    t = (low + high) * 0.5;
-                    if (source.Evaluate(t).x < x) low = t;
-                    else high = t;
+                    bezierParameter = (low + high) * 0.5;
+                    if (source.Evaluate(bezierParameter).x < normalizedTime) low = bezierParameter;
+                    else high = bezierParameter;
                 }
-                t = (low + high) * 0.5;
+                bezierParameter = (low + high) * 0.5;
             }
-            value = source.Evaluate(t).y;
-            var derivative = source.EvaluateDerivative(t);
+            value = source.Evaluate(bezierParameter).y;
+            var derivative = source.EvaluateDerivative(bezierParameter);
             slope = derivative.y / (derivative.x * (source.EndTime - source.StartTime));
             if (double.IsNaN(slope) || double.IsInfinity(slope))
                 throw new NotSupportedException("The source has no finite slope at a fitting sample.");
@@ -125,12 +125,18 @@ namespace RCurve
         }
 
         private static BakedRationalCurve Assemble(double[] times, double[] values, RationalCurveSegment[] segments,
-            CurveWrapMode pre, CurveWrapMode post, CurveLookupMode mode)
+            CurveWrapMode preWrapMode, CurveWrapMode postWrapMode, CurveLookupMode lookupMode)
         {
-            var prediction = FitIndexPrediction(times, 1);
-            if (!prediction.IsEnabled && times.Length >= 4) prediction = FitIndexPrediction(times, 3);
-            CurveLookupPlanner.Plan(times, prediction, mode, out var managed, out var burst, out var table, out double scale);
-            return new BakedRationalCurve(times, values, segments, pre, post, prediction, mode, managed, burst, table, scale);
+            CurveIndexPrediction prediction = default;
+            if (lookupMode == CurveLookupMode.Auto || lookupMode == CurveLookupMode.Magic)
+            {
+                prediction = FitIndexPrediction(times, 1);
+                if (!prediction.IsEnabled && times.Length >= 4) prediction = FitIndexPrediction(times, 3);
+            }
+            CurveLookupPlanner.Plan(times, prediction, lookupMode,
+                out var managedLookup, out var burstLookup, out var lookupTable, out double lookupScale);
+            return new BakedRationalCurve(times, values, segments, preWrapMode, postWrapMode,
+                prediction, lookupMode, managedLookup, burstLookup, lookupTable, lookupScale);
         }
 
         private static CurveIndexPrediction FitIndexPrediction(double[] times, int degree)
@@ -152,7 +158,7 @@ namespace RCurve
                     system[row, count] += powers[row] * i;
                 }
             }
-            // Tiny editor-only least-squares system. Ill-conditioned fits simply keep binary search.
+            // Tiny bake-time least-squares system. Ill-conditioned fits simply keep binary search.
             for (int column = 0; column < count; column++)
             {
                 int pivot = column;
@@ -176,6 +182,16 @@ namespace RCurve
                 Quadratic = degree == 3 ? system[2, count] : 0,
                 Cubic = degree == 3 ? system[3, count] : 0, InverseLength = inverseLength
             };
+            double minResidual = double.PositiveInfinity;
+            double maxResidual = double.NegativeInfinity;
+            for (int i = 0; i < times.Length; i++)
+            {
+                double residual = prediction.Evaluate(times[i] - times[0]) - i;
+                minResidual = Math.Min(minResidual, residual);
+                maxResidual = Math.Max(maxResidual, residual);
+            }
+            // Center key-index errors without changing the derivative; certify the shifted fit again.
+            prediction.Constant -= 0.5 * minResidual + 0.5 * maxResidual;
             return prediction.IsValidFor(times) ? prediction : default;
         }
 

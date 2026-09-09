@@ -75,8 +75,8 @@ public class RationalCurveBoundaryTests
         {
             Assert.That(empty.Evaluate(time), Is.EqualTo(sourceEmpty.Evaluate((float)time)));
             Assert.That(single.Evaluate(time), Is.EqualTo(sourceSingle.Evaluate((float)time)));
-            Assert.That(empty.EvaluateDerivative(time), Is.EqualTo(0));
-            Assert.That(single.EvaluateDerivative(time), Is.EqualTo(0));
+            Assert.That(empty.EvaluateSlope(time), Is.EqualTo(0));
+            Assert.That(single.EvaluateSlope(time), Is.EqualTo(0));
         }
         Assert.That(RationalCurveBuilder.FromSegments(sourceEmpty, Array.Empty<RationalCurveSegment>()).Evaluate(0), Is.EqualTo(0));
         Assert.That(RationalCurveBuilder.FromSegments(sourceSingle, Array.Empty<RationalCurveSegment>()).Evaluate(-100), Is.EqualTo(-3));
@@ -113,24 +113,24 @@ public class RationalCurveBoundaryTests
     {
         var source = AnimationCurve.Linear(-2, 3, 2, 11);
         var clamped = FromUnweightedCurve(source);
-        Assert.That(clamped.EvaluateDerivative(-3), Is.EqualTo(0));
-        Assert.That(clamped.EvaluateDerivative(3), Is.EqualTo(0));
-        Assert.That(clamped.EvaluateDerivative(0), Is.EqualTo(2).Within(1e-12));
-        Assert.That(double.IsNaN(clamped.EvaluateDerivative(-2)), Is.True);
-        Assert.That(double.IsNaN(clamped.EvaluateDerivative(2)), Is.True);
+        Assert.That(clamped.EvaluateSlope(-3), Is.EqualTo(0));
+        Assert.That(clamped.EvaluateSlope(3), Is.EqualTo(0));
+        Assert.That(clamped.EvaluateSlope(0), Is.EqualTo(2).Within(1e-12));
+        Assert.That(double.IsNaN(clamped.EvaluateSlope(-2)), Is.True);
+        Assert.That(double.IsNaN(clamped.EvaluateSlope(2)), Is.True);
 
         source.preWrapMode = source.postWrapMode = WrapMode.PingPong;
         var mirrored = FromUnweightedCurve(source);
-        Assert.That(mirrored.EvaluateDerivative(-3), Is.EqualTo(-2).Within(1e-12));
-        Assert.That(mirrored.EvaluateDerivative(3), Is.EqualTo(-2).Within(1e-12));
-        Assert.That(mirrored.EvaluateDerivative(7), Is.EqualTo(2).Within(1e-12));
+        Assert.That(mirrored.EvaluateSlope(-3), Is.EqualTo(-2).Within(1e-12));
+        Assert.That(mirrored.EvaluateSlope(3), Is.EqualTo(-2).Within(1e-12));
+        Assert.That(mirrored.EvaluateSlope(7), Is.EqualTo(2).Within(1e-12));
         foreach (double time in new[] { -6.0, -2, 2, 6 })
-            Assert.That(double.IsNaN(mirrored.EvaluateDerivative(time)), Is.True);
+            Assert.That(double.IsNaN(mirrored.EvaluateSlope(time)), Is.True);
 
         source.preWrapMode = source.postWrapMode = WrapMode.Loop;
         var looped = FromUnweightedCurve(source);
-        Assert.That(looped.EvaluateDerivative(3), Is.EqualTo(2).Within(1e-12));
-        Assert.That(double.IsNaN(looped.EvaluateDerivative(6)), Is.True);
+        Assert.That(looped.EvaluateSlope(3), Is.EqualTo(2).Within(1e-12));
+        Assert.That(double.IsNaN(looped.EvaluateSlope(6)), Is.True);
     }
 
     [Test]
@@ -140,24 +140,24 @@ public class RationalCurveBoundaryTests
         source.preWrapMode = source.postWrapMode = WrapMode.Loop;
         var loop = FromUnweightedCurve(source);
         foreach (double time in new[] { -1.0, 0, 1, 2 })
-            Assert.That(loop.EvaluateDerivative(time), Is.EqualTo(1).Within(1e-12));
+            Assert.That(loop.EvaluateSlope(time), Is.EqualTo(1).Within(1e-12));
 
         source = AnimationCurve.EaseInOut(0, 0, 1, 1);
         source.preWrapMode = source.postWrapMode = WrapMode.PingPong;
         var mirror = FromUnweightedCurve(source);
         foreach (double time in new[] { -1.0, 0, 1, 2 })
-            Assert.That(mirror.EvaluateDerivative(time), Is.EqualTo(0).Within(1e-12));
+            Assert.That(mirror.EvaluateSlope(time), Is.EqualTo(0).Within(1e-12));
 
         var corner = FromUnweightedCurve(new AnimationCurve(new Keyframe(0, 0, 0, 1),
             new Keyframe(1, 1, 1, -1), new Keyframe(2, 0, -1, 0)));
-        Assert.That(double.IsNaN(corner.EvaluateDerivative(1)), Is.True);
+        Assert.That(double.IsNaN(corner.EvaluateSlope(1)), Is.True);
         var stepSource = new AnimationCurve(new Keyframe(0, 2, 0, float.PositiveInfinity), new Keyframe(1, 5, float.PositiveInfinity, 0));
         stepSource.postWrapMode = WrapMode.PingPong;
         var step = FromUnweightedCurve(stepSource);
-        Assert.That(step.EvaluateDerivative(0.5), Is.EqualTo(0));
-        Assert.That(double.IsNaN(step.EvaluateDerivative(1)), Is.True);
-        Assert.That(double.IsNaN(step.EvaluateDerivative(3)), Is.True);
-        Assert.That(step.EvaluateDerivative(2), Is.EqualTo(0));
+        Assert.That(step.EvaluateSlope(0.5), Is.EqualTo(0));
+        Assert.That(double.IsNaN(step.EvaluateSlope(1)), Is.True);
+        Assert.That(double.IsNaN(step.EvaluateSlope(3)), Is.True);
+        Assert.That(step.EvaluateSlope(2), Is.EqualTo(0));
     }
 
     [Test]
@@ -174,7 +174,7 @@ public class RationalCurveBoundaryTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new BakedRationalCurve(Array.Empty<double>(), Array.Empty<double>(), Array.Empty<RationalCurveSegment>(), (CurveWrapMode)99));
         var curve = FromUnweightedCurve(source);
         Assert.Throws<ArgumentOutOfRangeException>(() => curve.Evaluate(double.NaN));
-        Assert.Throws<ArgumentOutOfRangeException>(() => curve.EvaluateDerivative(double.PositiveInfinity));
+        Assert.Throws<ArgumentOutOfRangeException>(() => curve.EvaluateSlope(double.PositiveInfinity));
     }
 
     private static BakedRationalCurve FromUnweightedCurve(AnimationCurve source)
@@ -184,7 +184,7 @@ public class RationalCurveBoundaryTests
         for (int i = 0; i < segments.Length; i++)
         {
             if (float.IsInfinity(keys[i].outTangent) || float.IsInfinity(keys[i + 1].inTangent)) continue;
-            // Exact cubic Hermite representation; tests do not depend on the unfinished fitting solver.
+            // Exact cubic Hermite representation, independent of the fitting solver.
             segments[i] = new RationalCurveSegment(keys[i].time, keys[i + 1].time, keys[i].value, keys[i + 1].value,
                 keys[i].outTangent, keys[i + 1].inTangent, new[] { 1.0, 1, 1, 1 }, Array.Empty<double>());
         }

@@ -5,7 +5,6 @@ using RCurve;
 using RCurve.Editor;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Scripting.APIUpdating;
 using Object = UnityEngine.Object;
 
 public class RationalCurveInspectorTests
@@ -77,9 +76,8 @@ public class RationalCurveInspectorTests
     }
 
     [Test]
-    public void RenamedTypesKeepUnitySerializationSeparateFromBakedRuntimeData()
+    public void UnitySerializationIsSeparateFromBakedRuntimeData()
     {
-        Assert.That(Attribute.IsDefined(typeof(RationalCurve), typeof(MovedFromAttribute)), Is.True);
         Assert.That(typeof(RationalCurve).Assembly.GetName().Name, Is.EqualTo("RCurve.Unity"));
         Assert.That(typeof(BakedRationalCurve).Assembly.GetName().Name, Is.EqualTo("RCurve.Runtime"));
         foreach (AssemblyName reference in typeof(BakedRationalCurve).Assembly.GetReferencedAssemblies())

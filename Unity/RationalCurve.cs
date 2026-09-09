@@ -2,13 +2,11 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using UnityEngine;
-using UnityEngine.Scripting.APIUpdating;
 
 namespace RCurve
 {
     // Unity-facing source and baked storage. Fitting happens only when editor tooling or Bake() requests it.
     [Serializable]
-    [MovedFrom(true, sourceNamespace: "RCurve", sourceAssembly: null, sourceClassName: "SerializableRationalCurve")]
     public sealed class RationalCurve : ISerializationCallbackReceiver
     {
         [Serializable]
@@ -106,7 +104,6 @@ namespace RCurve
         public double Evaluate(double time) => BakedCurve.Evaluate(time);
         public double Evaluate(double time, ref int intervalHint) => BakedCurve.Evaluate(time, ref intervalHint);
         public double EvaluateSlope(double time) => BakedCurve.EvaluateSlope(time);
-        public double EvaluateDerivative(double time) => EvaluateSlope(time);
 
         // Runtime fitting is intentionally explicit because it allocates and can be expensive.
         public void Bake()

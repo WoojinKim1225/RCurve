@@ -13,13 +13,14 @@ The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 
 
 | Version / host | Installation | Results |
 |---|---|---|
+| 0.3.0 / Unity 6000.5.8f1 | Local UPM + runtime web demo source | **292/292 Edit Mode passed; WebGL IL2CPP build succeeded; Linux Mono headless player checks passed, including actual Burst execution** |
 | 0.2.0 / Unity 6000.5.8f1 | Local UPM, sample not imported | **284/284 Edit Mode passed; URP 17.5.0 WebGL build succeeded** |
 | 0.1.0 / Unity 6000.5.8f1 | Local UPM, sample not imported | **283/283 Edit Mode passed** |
 | 0.1.0 / Unity 6000.5.8f1 | Local UPM + official Package Manager sample import | **285/285 Edit Mode passed** |
 | 0.1.0 / Unity 6000.6.0f1 | Local UPM + official Package Manager sample import | **285/285 Edit Mode passed** |
 | 0.1.0 / Unity 6000.6.0f1 | Public GitHub Git URL + official sample import | **285/285 Edit Mode passed** |
 
-Each host had an empty Assets directory before installation (apart from the sample-import validation helper). Core tests do not depend on the optional sample. These were batch Edit Mode checks on Linux, not Play Mode or player-build checks.
+Each host had an empty Assets directory before installation (apart from the sample-import validation helper). Core tests do not depend on the optional sample. The numbered test counts are batch Edit Mode checks on Linux. For 0.3.0, separate CLI player checks also covered runtime baking, Magic correction, 1,025 wrapped queries, serialization and an actual Burst job in a Linux Mono player. WebGL IL2CPP compilation passed; browser input/rendering and Linux IL2CPP execution remain unverified.
 
 ## Dependencies
 
@@ -36,7 +37,9 @@ The comparison sample uses Canvas/uGUI and LegacyRuntime.ttf, not UI Toolkit. Co
 
 ## Serialization
 
-Existing type/file GUIDs are preserved. SerializableRationalCurve was renamed to RationalCurve in the same assembly using MovedFrom; its sourceAssembly is deliberately null to avoid a rename-plus-assembly-move API Updater request.
+Version 0.3.0 removes the `SerializableRationalCurve` → `RationalCurve` `MovedFrom` migration. Existing file GUIDs and serialized field names are unchanged, but automatic migration from the old type is no longer supported. Back up older assets before upgrading.
+
+The scalar `EvaluateDerivative` aliases have also been removed; use `EvaluateSlope` on `RationalCurve`, `BakedRationalCurve`, `RationalCurveSegment` and `NativeRationalCurve`. Segment evaluation parameters are now named `time` rather than `x`; update named arguments. `AnimationCurveBezierSegment.EvaluateDerivative` remains a vector-valued parametric derivative, not a scalar slope.
 
 Input signatures use versioned semantic binary values and SHA-256 rather than Unity's changing AnimationCurve JSON representation. Older bakes may be marked stale after upgrading and should be rebaked in the Editor. Runtime never repairs or fits stale data automatically; callers may explicitly replace it with `Bake()`.
 

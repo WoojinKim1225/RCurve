@@ -5,35 +5,48 @@ using UnityEngine;
 public sealed class RCurveWebDemo : MonoBehaviour
 {
     private readonly float[] _values = { 0, 0.85f, 0.15f, 1 };
-    private AnimationCurve _source;
-    private RationalCurve _curve;
+    private const int SampleCount = 161;
+    private float[] _sourceSamples;
+    private float[] _bakedSamples;
+    private double _maxError;
+    private bool _dirty;
     private string _error;
-    private Texture2D _pixel;
     private GUIStyle _title;
 
-    [RuntimeInitializeOnLoadMethod]
-    private static void StartDemo() => new GameObject("RCurve Web Demo").AddComponent<RCurveWebDemo>();
-
-    private void Awake()
-    {
-        _pixel = new Texture2D(1, 1);
-        _pixel.SetPixel(0, 0, Color.white);
-        _pixel.Apply();
-        Rebuild();
-    }
+    private void Awake() => Rebuild();
 
     private void Rebuild()
     {
+        _dirty = false;
         try
         {
-            _source = new AnimationCurve(
+            foreach (float value in _values)
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                    throw new ArgumentException("Key values must be finite.");
+            var source = new AnimationCurve(
                 new Keyframe(0, _values[0], 0, 0),
                 new Keyframe(1f / 3, _values[1], 0, 0),
                 new Keyframe(2f / 3, _values[2], 0, 0),
                 new Keyframe(1, _values[3], 0, 0));
-            _curve = new RationalCurve(_source, new CurveFitSettings(
+            source.preWrapMode = source.postWrapMode = WrapMode.ClampForever;
+            var curve = new RationalCurve(source, new CurveFitSettings(
                 CurveFitObjective.LeastSquares, CurveFitQuality.Low, 0.002, 0.02, 8));
-            _curve.Bake();
+            curve.Bake();
+            var sourceSamples = new float[SampleCount];
+            var bakedSamples = new float[SampleCount];
+            double maxError = 0;
+            for (int i = 0; i < SampleCount; i++)
+            {
+                float t = i / (SampleCount - 1f);
+                sourceSamples[i] = source.Evaluate(t);
+                double value = curve.Evaluate(t);
+                bakedSamples[i] = (float)value;
+                maxError = Math.Max(maxError, Math.Abs(sourceSamples[i] - value));
+            }
+            // Publish only complete results; failed bakes keep the last good graph.
+            _sourceSamples = sourceSamples;
+            _bakedSamples = bakedSamples;
+            _maxError = maxError;
             _error = null;
         }
         catch (Exception exception) { _error = exception.Message; }
@@ -45,8 +58,8 @@ public sealed class RCurveWebDemo : MonoBehaviour
         float width = Mathf.Min(980, Screen.width - 32);
         GUILayout.BeginArea(new Rect((Screen.width - width) / 2, 14, width, Screen.height - 28));
         GUILayout.Label("RCurve — runtime rational curve baking", _title);
-        GUILayout.Label("Key values and finite tangents are fixed as boundary constraints; P(u) / Q(u) approximates each interval.");
-        GUILayout.Label("P(u) = Σ pᵢ Bᵢ,ₙ(u)     Q(u) = Σ qᵢ Bᵢ,ₙ(u), qᵢ > 0     R(u) = P(u) / Q(u)");
+        GUILayout.Label("Key values preserved; tangents fixed at zero. R(u) = P(u) / Q(u).");
+        GUILayout.Label("Interactive preview: LeastSquares / Low (3/3), value tolerance 0.002, slope tolerance 0.02.");
 
         GUILayout.Space(8);
         GUILayout.BeginHorizontal();
@@ -55,28 +68,31 @@ public sealed class RCurveWebDemo : MonoBehaviour
         if (GUILayout.Button("Overshoot", GUILayout.Width(100))) Set(0, 1.3f, 0.7f, 1);
         GUILayout.EndHorizontal();
 
-        bool changed = false;
         for (int i = 0; i < _values.Length; i++)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label($"Key {i + 1}: {_values[i],6:F2}", GUILayout.Width(100));
             float value = GUILayout.HorizontalSlider(_values[i], -1, 2);
-            changed |= value != _values[i];
+            _dirty |= value != _values[i];
             _values[i] = value;
             GUILayout.EndHorizontal();
         }
-        if (changed) Rebuild();
+        if (_dirty && GUIUtility.hotControl == 0) Rebuild();
 
         Rect graph = GUILayoutUtility.GetRect(width, Mathf.Max(220, Screen.height - 285));
         GUI.Box(graph, GUIContent.none);
-        DrawGrid(graph);
-        if (_curve != null)
+        if (Event.current.type == EventType.Repaint)
         {
-            DrawCurve(graph, t => _source.Evaluate(t), new Color(0.2f, 0.65f, 1), 3);
-            DrawCurve(graph, t => (float)_curve.Evaluate(t), new Color(1, 0.45f, 0.12f), 2);
+            DrawGrid(graph);
+            if (_sourceSamples != null)
+            {
+                DrawCurve(graph, _sourceSamples, new Color(0.2f, 0.65f, 1), 3);
+                DrawCurve(graph, _bakedSamples, new Color(1, 0.45f, 0.12f), 2);
+            }
         }
-        GUILayout.Label("Blue: Unity AnimationCurve    Orange: RCurve runtime bake    Moving a slider bakes again immediately.");
-        if (_error != null) GUILayout.Label("Bake error: " + _error);
+        GUILayout.Label("Blue: Unity AnimationCurve    Orange: RCurve    Release the slider to bake.");
+        if (_sourceSamples != null) GUILayout.Label($"Max sampled error ({SampleCount} points): {_maxError:G4}");
+        if (_error != null) GUILayout.Label("Bake failed; graph unchanged: " + _error);
         GUILayout.EndArea();
     }
 
@@ -92,13 +108,13 @@ public sealed class RCurveWebDemo : MonoBehaviour
         for (int i = 0; i <= 6; i++) DrawLine(new Vector2(rect.x + rect.width * i / 6, rect.y), new Vector2(rect.x + rect.width * i / 6, rect.yMax), new Color(1, 1, 1, 0.12f), 1);
     }
 
-    private void DrawCurve(Rect rect, Func<float, float> evaluate, Color color, float thickness)
+    private void DrawCurve(Rect rect, float[] samples, Color color, float thickness)
     {
-        Vector2 previous = Point(rect, 0, evaluate(0));
-        for (int i = 1; i <= 160; i++)
+        Vector2 previous = Point(rect, 0, samples[0]);
+        for (int i = 1; i < samples.Length; i++)
         {
-            float t = i / 160f;
-            Vector2 next = Point(rect, t, evaluate(t));
+            float t = i / (samples.Length - 1f);
+            Vector2 next = Point(rect, t, samples[i]);
             DrawLine(previous, next, color, thickness);
             previous = next;
         }
@@ -113,7 +129,7 @@ public sealed class RCurveWebDemo : MonoBehaviour
         float angle = Vector2.SignedAngle(Vector2.right, b - a);
         GUIUtility.RotateAroundPivot(angle, a);
         GUI.color = color;
-        GUI.DrawTexture(new Rect(a.x, a.y - width / 2, Vector2.Distance(a, b), width), _pixel);
+        GUI.DrawTexture(new Rect(a.x, a.y - width / 2, Vector2.Distance(a, b), width), Texture2D.whiteTexture);
         GUI.matrix = matrix;
         GUI.color = previous;
     }

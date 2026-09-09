@@ -13,20 +13,25 @@ public class CurveIndexPredictionTests
         {
             double u = i / (double)(count - 1);
             double time = shape == 1 ? (-0.1 + Math.Sqrt(0.01 + 3.6 * u)) / 1.8 :
-                shape == 2 && i < count - 1 ? u * 1e-6 : u;
-            keys[i] = new Keyframe((float)time, i, float.PositiveInfinity, float.PositiveInfinity);
+                shape == 2 && i < count - 1 ? u * 0.01 : u;
+            keys[i] = new Keyframe((float)(-2 + 3 * time), i, float.PositiveInfinity, float.PositiveInfinity);
         }
         var source = new AnimationCurve(keys) { preWrapMode = WrapMode.PingPong, postWrapMode = WrapMode.Loop };
-        var curve = RationalCurveBuilder.FromSegments(source, new RationalCurveSegment[count - 1]);
+        var curve = RationalCurveBuilder.FromSegments(source, new RationalCurveSegment[count - 1], CurveLookupMode.Magic);
+        var expectedStrategy = shape == 2 ? CurveLookupStrategy.BinarySearch : CurveLookupStrategy.Magic;
+        Assert.That(curve.ManagedLookup, Is.EqualTo(expectedStrategy));
+        Assert.That(curve.BurstLookup, Is.EqualTo(expectedStrategy));
         Assert.That(curve.IndexPrediction.IsEnabled, Is.EqualTo(shape != 2));
         if (shape == 1) Assert.That(Math.Abs(curve.IndexPrediction.Quadratic), Is.GreaterThan(1));
         var binary = new BakedRationalCurve(curve.KeyTimes.ToArray(), curve.KeyValues.ToArray(), curve.Segments.ToArray(),
             curve.PreWrapMode, curve.PostWrapMode);
-        var wrapper = new RationalCurve(source);
+        var wrapper = new RationalCurve(source, new CurveFitSettings(lookupMode: CurveLookupMode.Magic));
         wrapper.StoreBuild(curve, wrapper.InputHash);
         var restored = JsonUtility.FromJson<RationalCurve>(JsonUtility.ToJson(wrapper));
         var restoredCurve = restored.BakedCurve;
         Assert.That(restoredCurve.IndexPrediction.IsEnabled, Is.EqualTo(curve.IndexPrediction.IsEnabled));
+        Assert.That(restoredCurve.ManagedLookup, Is.EqualTo(expectedStrategy));
+        Assert.That(restoredCurve.BurstLookup, Is.EqualTo(expectedStrategy));
         for (int i = 0; i <= 100; i++)
             Assert.That(restoredCurve.IndexPrediction.Evaluate(i / 100.0),
                 Is.EqualTo(curve.IndexPrediction.Evaluate(i / 100.0)).Within(1e-10));
@@ -38,11 +43,57 @@ public class CurveIndexPredictionTests
             Check(curve, binary, time);
             Check(restoredCurve, restoredBinary, time);
             long bits = BitConverter.DoubleToInt64Bits(time);
-            Check(curve, binary, time == 0 ? -double.Epsilon : BitConverter.Int64BitsToDouble(bits - 1));
-            Check(curve, binary, BitConverter.Int64BitsToDouble(bits + 1));
+            Check(curve, binary, time == 0 ? -double.Epsilon : BitConverter.Int64BitsToDouble(bits + (time > 0 ? -1 : 1)));
+            Check(curve, binary, time == 0 ? double.Epsilon : BitConverter.Int64BitsToDouble(bits + (time > 0 ? 1 : -1)));
         }
         var random = new System.Random(829 + shape);
-        for (int i = 0; i < 10000; i++) Check(curve, binary, -0.5 + 2 * random.NextDouble());
+        for (int i = 0; i < 10000; i++) Check(curve, binary, -3 + 6 * random.NextDouble());
+    }
+
+    [Test]
+    public void CenteringResidualsCertifiesAnOtherwiseRejectedLinearFit()
+    {
+        float[] times = { 0, 0.69f, 0.72f, 0.91f, 1 };
+        var keys = new Keyframe[times.Length];
+        for (int i = 0; i < times.Length; i++)
+            keys[i] = new Keyframe(times[i], i, float.PositiveInfinity, float.PositiveInfinity);
+        var curve = RationalCurveBuilder.FromSegments(new AnimationCurve(keys),
+            new RationalCurveSegment[times.Length - 1], CurveLookupMode.Magic);
+        var prediction = curve.IndexPrediction;
+        Assert.That(curve.ManagedLookup, Is.EqualTo(CurveLookupStrategy.Magic));
+        Assert.That(prediction.Cubic, Is.Zero);
+        Assert.That(prediction.Quadratic, Is.Zero);
+        Assert.That(prediction.IsValidFor(curve.KeyTimes), Is.True);
+
+        double minResidual = double.PositiveInfinity, maxResidual = double.NegativeInfinity, meanResidual = 0;
+        for (int i = 0; i < times.Length; i++)
+        {
+            double residual = prediction.Evaluate(times[i]) - i;
+            minResidual = Math.Min(minResidual, residual);
+            maxResidual = Math.Max(maxResidual, residual);
+            meanResidual += residual / times.Length;
+        }
+        Assert.That(minResidual + maxResidual, Is.EqualTo(0).Within(1e-12));
+        Assert.That(maxResidual, Is.LessThan(0.95));
+        // Restore the zero-mean least-squares intercept: its maximum error exceeds one.
+        prediction.Constant -= meanResidual;
+        Assert.That(prediction.IsValidFor(curve.KeyTimes), Is.False);
+    }
+
+    [TestCase(CurveLookupMode.Auto), TestCase(CurveLookupMode.Magic),
+     TestCase(CurveLookupMode.BruteForce), TestCase(CurveLookupMode.LUT)]
+    public void OnlyAutoAndMagicFitAnIndexPredictor(CurveLookupMode mode)
+    {
+        var source = AnimationCurve.Linear(0, 0, 1, 1);
+        var curve = RationalCurveBuilder.Build(source, new CurveFitSettings(lookupMode: mode));
+        Assert.That(curve.IndexPrediction.IsEnabled, Is.EqualTo(mode == CurveLookupMode.Auto || mode == CurveLookupMode.Magic));
+        if (mode == CurveLookupMode.BruteForce || mode == CurveLookupMode.LUT)
+        {
+            var expected = mode == CurveLookupMode.LUT ? CurveLookupStrategy.LUT : CurveLookupStrategy.BruteForce;
+            Assert.That(curve.ManagedLookup, Is.EqualTo(expected));
+            Assert.That(curve.BurstLookup, Is.EqualTo(expected));
+        }
+        Assert.That(curve.Evaluate(0.5), Is.EqualTo(0.5).Within(1e-12));
     }
 
     [Test]

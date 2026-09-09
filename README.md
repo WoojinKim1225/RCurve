@@ -2,16 +2,16 @@
 
 Rational curve baking for Unity, with managed and Burst evaluators.
 
-**Preserves animation-key values and each finite in/out tangent as boundary constraints; approximates between keys.** Steps, discontinuous derivatives and wrapping have explicit rules. This is an experimental **0.2.0** release, not a claim of bit-identical AnimationCurve evaluation everywhere.
+**Preserves animation-key values and each finite in/out tangent as boundary constraints; approximates between keys.** Steps, discontinuous derivatives and wrapping have explicit rules. This is an experimental **0.3.0** release, not a claim of bit-identical AnimationCurve evaluation everywhere.
 
-[Open the interactive WebGL demo](https://woojinkim1225.github.io/RCurve/) (available after publishing the `gh-pages` branch).
+[Open the interactive WebGL demo](https://woojinkim1225.github.io/RCurve/).
 
 ## Install
 
 Unity Package Manager → **Install package from Git URL**:
 
 ```text
-https://github.com/WoojinKim1225/RCurve.git#v0.2.0
+https://github.com/WoojinKim1225/RCurve.git#v0.3.0
 ```
 
 Package ID: `com.woojinkim1225.rcurve`. Requires Git and a Unity 6 editor. Do not install alongside an older `Assets/RCurve` source copy; back up/migrate that copy first to avoid duplicate assemblies/GUIDs.
@@ -53,6 +53,10 @@ P(u) = Σ pᵢ Bᵢ,ₙ(u)    Q(u) = Σ qᵢ Bᵢ,ₙ(u), qᵢ > 0    R(u) = P(u
 
 The endpoint numerator coefficients are determined by the key values and finite tangents. Least-squares or sampled minimax fitting chooses the remaining coefficients; intervals subdivide until sampled value and slope tolerances pass. Evaluation converts the Bernstein coefficients once to an allocation-free Horner form. See the [interactive graph](https://woojinkim1225.github.io/RCurve/) and [usage guide](Documentation~/usage.md).
 
+![A weighted Unity AnimationCurve and its RCurve bake overlap; a separate lower plot shows the signed approximation error.](Documentation~/images/curve-accuracy.svg)
+
+Actual output from the current working tree in Unity 6000.5.8f1, using default fitting settings. The upper plot is not magnified; the lower error axis is independently scaled. This example's maximum absolute error over 513 shared time samples is about **1.73 × 10⁻⁶**, not a continuous error guarantee or a typical-case claim. [Inputs, raw data and regeneration instructions](Documentation~/graphs.md).
+
 - `Evaluate(time)` returns the value; `EvaluateSlope(time)` returns dy/dt.
 - `Evaluate(time, ref intervalHint)` optionally reuses a caller-owned interval. Do not share mutable hints between playback streams/jobs.
 - `curve.BakedCurve` exposes immutable managed data.
@@ -67,6 +71,14 @@ Choose **Auto**, **BruteForce**, **LUT**, or **Magic** independently of fitting 
 
 Auto uses a benchmark-calibrated cost model at bake time, with separate managed/Burst choices. LUT storage is limited to 1 KiB per curve. Magic uses a certified global index predictor plus at most one adjacent-interval correction. Binary search remains an internal candidate/fallback. Auto is an estimated policy, **not a guarantee of the fastest strategy on every CPU or access pattern**.
 
+![On one proportional time axis, the orange guessed interval 2 ends at 0.91, while the purple query at 0.95 lies in green interval 3. Magic moves one interval right.](Documentation~/images/magic-lookup.svg)
+
+Orange is the guess; green contains the query. **The time does not move—the candidate interval changes.** The axis is zoomed to 0.60–1.00, with actual interval widths preserved.
+
+**Magic predicts where to evaluate, not the animation value.** At bake time it fits a global linear/cubic map from baked key times—including subdivision boundaries—to their indices. At runtime, after time wrapping, it evaluates that map, floors and clamps the result to a candidate interval, then checks the actual boundaries. It keeps the candidate or moves one interval left/right, verifies the result, and evaluates the located segment. Exact keys return stored values.
+
+In this actual linear-predictor example, `t = 0.95 → f(t) ≈ 2.877 → candidate 2`. Since `0.95 ≥ times[3] ≈ 0.91`, the lookup moves right to interval 3 before evaluating the curve. Failed predictor validation selects binary search; failed runtime interval verification also falls back to binary search. [Inputs and trace checks](Documentation~/graphs.md).
+
 ## Samples
 
 In Package Manager, select **RCurve → Samples → Curve Comparison → Import**. Open the imported `Comparison.unity` scene.
@@ -76,7 +88,9 @@ In Package Manager, select **RCurve → Samples → Curve Comparison → Import*
 - Only the signed-error bar is magnified. Marker positions use the actual values.
 - Stop Play Mode before editing/rebaking. The scene demonstrates accuracy, not reliable frame-time benchmarking.
 
-Import **Runtime Web Demo** for an IMGUI graph whose key values can be changed and baked while running. It is the source used by the WebGL demo.
+Import **Runtime Web Demo**, add `RCurveWebDemo` to an empty GameObject in your demo scene, then enter Play Mode. It does not auto-start in unrelated scenes. Key values bake when a slider is released; the graph shows the maximum error at 161 sampled points, not a continuous error bound. The preview uses **LeastSquares / Low**, zero tangents and clamped endpoints, rather than the package's default fitting settings. Failed bakes keep the last good graph. This is the source for the WebGL demo; source changes require rebuilding and publishing the player.
+
+Run **Tools → RCurve → Check Web Demo** after importing to check baking, endpoint clamping and recovery from invalid input.
 
 Sample scripts and their UI dependency are separate from the core runtime assemblies. The comparison sample uses Built-in unlit materials; URP/HDRP hosts may need replacement materials. Its supplied EventSystem uses the Legacy Input Manager; configure InputSystemUIInputModule/UI Actions in Input System-only hosts.
 

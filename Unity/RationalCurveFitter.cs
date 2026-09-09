@@ -2,40 +2,40 @@ using System;
 
 namespace RCurve
 {
-    // Small editor-only solvers. P and Q are affine in the free Bernstein coefficients.
+    // Small bake-time solvers. P and Q are affine in the free Bernstein coefficients.
     // LS is damped Gauss-Newton (local); minimax is sampled LP feasibility + bisection.
     internal sealed class RationalCurveFitter
     {
         internal const int SampleCount = 33;
-        private const double _minimumQ = 1e-6;
+        private const double MinimumDenominator = 1e-6;
         private readonly int _degree;
         private readonly int _variableCount;
-        private readonly double[,] _p;
-        private readonly double[,] _q;
-        private readonly double[] _p0;
-        private readonly double[] _q0;
-        private readonly double[] _y;
-        private readonly double[] _initial;
-        private readonly double _offset;
-        private readonly double _scale;
+        private readonly double[,] _numeratorBasis;
+        private readonly double[,] _denominatorBasis;
+        private readonly double[] _numeratorConstant;
+        private readonly double[] _denominatorConstant;
+        private readonly double[] _normalizedValues;
+        private readonly double[] _initialCoefficients;
+        private readonly double _valueOffset;
+        private readonly double _valueScale;
 
         internal RationalCurveFitter(int degree, double length, double[] values, double startSlope, double endSlope)
         {
             _degree = degree;
             _variableCount = 2 * degree - 3;
-            _offset = values[0];
+            _valueOffset = values[0];
             double scale = Math.Max(1e-9, Math.Max(Math.Abs(length * startSlope), Math.Abs(length * endSlope)));
-            foreach (double value in values) scale = Math.Max(scale, Math.Abs(value - _offset));
-            _scale = scale;
-            _y = new double[values.Length];
-            for (int i = 0; i < values.Length; i++) _y[i] = (values[i] - _offset) / scale;
+            foreach (double value in values) scale = Math.Max(scale, Math.Abs(value - _valueOffset));
+            _valueScale = scale;
+            _normalizedValues = new double[values.Length];
+            for (int i = 0; i < values.Length; i++) _normalizedValues[i] = (values[i] - _valueOffset) / scale;
             startSlope /= scale;
             endSlope /= scale;
-            double last = _y[_y.Length - 1];
-            _p = new double[values.Length, _variableCount];
-            _q = new double[values.Length, _variableCount];
-            _p0 = new double[values.Length];
-            _q0 = new double[values.Length];
+            double last = _normalizedValues[_normalizedValues.Length - 1];
+            _numeratorBasis = new double[values.Length, _variableCount];
+            _denominatorBasis = new double[values.Length, _variableCount];
+            _numeratorConstant = new double[values.Length];
+            _denominatorConstant = new double[values.Length];
             for (int i = 0; i < values.Length; i++)
             {
                 double u = (double)i / (values.Length - 1);
@@ -46,12 +46,12 @@ namespace RCurve
                     for (int j = n; j > 0; j--) basis[j] = (1 - u) * basis[j] + u * basis[j - 1];
                     basis[0] *= 1 - u;
                 }
-                _p0[i] = length * startSlope / degree * basis[1];
-                _q0[i] = basis[0];
-                for (int j = 0; j < degree; j++) _q[i, j] = basis[j + 1];
-                _p[i, degree - 2] = last * basis[degree - 1];
-                _p[i, degree - 1] = last * basis[degree] - length * endSlope / degree * basis[degree - 1];
-                for (int j = degree; j < _variableCount; j++) _p[i, j] = basis[j - degree + 2];
+                _numeratorConstant[i] = length * startSlope / degree * basis[1];
+                _denominatorConstant[i] = basis[0];
+                for (int j = 0; j < degree; j++) _denominatorBasis[i, j] = basis[j + 1];
+                _numeratorBasis[i, degree - 2] = last * basis[degree - 1];
+                _numeratorBasis[i, degree - 1] = last * basis[degree] - length * endSlope / degree * basis[degree - 1];
+                for (int j = degree; j < _variableCount; j++) _numeratorBasis[i, j] = basis[j - degree + 2];
             }
             double[] cubic = { 0, length * startSlope / 3, last - length * endSlope / 3, last };
             for (int n = 3; n < degree; n++)
@@ -66,42 +66,42 @@ namespace RCurve
                 }
                 cubic = elevated;
             }
-            _initial = new double[_variableCount];
-            for (int j = 0; j < degree; j++) _initial[j] = 1;
-            for (int j = degree; j < _variableCount; j++) _initial[j] = cubic[j - degree + 2];
+            _initialCoefficients = new double[_variableCount];
+            for (int j = 0; j < degree; j++) _initialCoefficients[j] = 1;
+            for (int j = degree; j < _variableCount; j++) _initialCoefficients[j] = cubic[j - degree + 2];
         }
 
         internal RationalCurveSegment Fit(double start, double end, double startValue, double endValue,
             double startSlope, double endSlope, CurveFitObjective objective)
         {
-            double[] x = objective == CurveFitObjective.Minimax ? Minimax() : LeastSquares();
+            double[] coefficients = objective == CurveFitObjective.Minimax ? Minimax() : LeastSquares();
             var denominator = new double[_degree + 1];
             denominator[0] = 1;
-            Array.Copy(x, 0, denominator, 1, _degree);
+            Array.Copy(coefficients, 0, denominator, 1, _degree);
             var interior = new double[_degree - 3];
             for (int i = 0; i < interior.Length; i++)
-                interior[i] = _offset * denominator[i + 2] + _scale * x[_degree + i];
-            return new RationalCurveSegment(start, end, startValue, endValue, startSlope, endSlope, denominator, interior, _minimumQ);
+                interior[i] = _valueOffset * denominator[i + 2] + _valueScale * coefficients[_degree + i];
+            return new RationalCurveSegment(start, end, startValue, endValue, startSlope, endSlope, denominator, interior, MinimumDenominator);
         }
 
-        private void Evaluate(double[] x, int sample, out double p, out double q)
+        private void Evaluate(double[] coefficients, int sample, out double p, out double q)
         {
-            p = _p0[sample];
-            q = _q0[sample];
+            p = _numeratorConstant[sample];
+            q = _denominatorConstant[sample];
             for (int j = 0; j < _variableCount; j++)
             {
-                p += _p[sample, j] * x[j];
-                q += _q[sample, j] * x[j];
+                p += _numeratorBasis[sample, j] * coefficients[j];
+                q += _denominatorBasis[sample, j] * coefficients[j];
             }
         }
 
-        private double Error(double[] x, bool maximum)
+        private double Error(double[] coefficients, bool maximum)
         {
             double result = 0;
-            for (int i = 0; i < _y.Length; i++)
+            for (int i = 0; i < _normalizedValues.Length; i++)
             {
-                Evaluate(x, i, out double p, out double q);
-                double error = Math.Abs(p / q - _y[i]);
+                Evaluate(coefficients, i, out double p, out double q);
+                double error = Math.Abs(p / q - _normalizedValues[i]);
                 if (double.IsNaN(error) || double.IsInfinity(error)) return double.PositiveInfinity;
                 result = maximum ? Math.Max(result, error) : result + error * error;
             }
@@ -110,22 +110,22 @@ namespace RCurve
 
         private double[] LeastSquares()
         {
-            var x = (double[])_initial.Clone();
-            double score = Error(x, false);
+            var coefficients = (double[])_initialCoefficients.Clone();
+            double score = Error(coefficients, false);
             double damping = 1e-3;
             var jacobian = new double[_variableCount];
             for (int iteration = 0; iteration < 80 && score > 1e-24; iteration++)
             {
                 var normal = new double[_variableCount, _variableCount];
                 var rhs = new double[_variableCount];
-                for (int i = 0; i < _y.Length; i++)
+                for (int i = 0; i < _normalizedValues.Length; i++)
                 {
-                    Evaluate(x, i, out double p, out double q);
+                    Evaluate(coefficients, i, out double p, out double q);
                     double value = p / q;
-                    for (int j = 0; j < _variableCount; j++) jacobian[j] = (_p[i, j] - value * _q[i, j]) / q;
+                    for (int j = 0; j < _variableCount; j++) jacobian[j] = (_numeratorBasis[i, j] - value * _denominatorBasis[i, j]) / q;
                     for (int j = 0; j < _variableCount; j++)
                     {
-                        rhs[j] -= jacobian[j] * (value - _y[i]);
+                        rhs[j] -= jacobian[j] * (value - _normalizedValues[i]);
                         for (int k = 0; k < _variableCount; k++) normal[j, k] += jacobian[j] * jacobian[k];
                     }
                 }
@@ -133,24 +133,24 @@ namespace RCurve
                 if (!Solve(normal, rhs)) { damping *= 10; continue; }
                 var candidate = new double[_variableCount];
                 for (int j = 0; j < _variableCount; j++)
-                    candidate[j] = j < _degree ? Math.Max(_minimumQ, x[j] + rhs[j]) : x[j] + rhs[j];
+                    candidate[j] = j < _degree ? Math.Max(MinimumDenominator, coefficients[j] + rhs[j]) : coefficients[j] + rhs[j];
                 double next = Error(candidate, false);
                 if (next < score)
                 {
                     double improvement = score - next;
-                    x = candidate;
+                    coefficients = candidate;
                     score = next;
                     damping = Math.Max(1e-12, damping * 0.3);
                     if (improvement < 1e-15) break;
                 }
                 else damping *= 10;
             }
-            return x;
+            return coefficients;
         }
 
         private double[] Minimax()
         {
-            var best = (double[])_initial.Clone();
+            var best = (double[])_initialCoefficients.Clone();
             double high = Error(best, true);
             if (high < 1e-12) return best;
             double bestError = high;
@@ -173,23 +173,27 @@ namespace RCurve
         {
             // q_i = epsilon + z_i, z_i >= 0. Free numerator coefficients use z+ - z-.
             int variables = _degree + 2 * (_degree - 3);
-            var a = new double[2 * _y.Length, variables];
-            var b = new double[2 * _y.Length];
-            for (int i = 0; i < _y.Length; i++)
+            var a = new double[2 * _normalizedValues.Length, variables];
+            var b = new double[2 * _normalizedValues.Length];
+            for (int i = 0; i < _normalizedValues.Length; i++)
             {
-                double p0 = _p0[i];
-                double q0 = _q0[i];
-                for (int j = 0; j < _degree; j++) { p0 += _minimumQ * _p[i, j]; q0 += _minimumQ * _q[i, j]; }
+                double p0 = _numeratorConstant[i];
+                double q0 = _denominatorConstant[i];
+                for (int j = 0; j < _degree; j++)
+                {
+                    p0 += MinimumDenominator * _numeratorBasis[i, j];
+                    q0 += MinimumDenominator * _denominatorBasis[i, j];
+                }
                 for (int side = 0; side < 2; side++)
                 {
                     double sign = side == 0 ? 1 : -1;
-                    double target = _y[i] + sign * error;
+                    double target = _normalizedValues[i] + sign * error;
                     int row = 2 * i + side;
                     b[row] = sign * (target * q0 - p0);
-                    for (int j = 0; j < _degree; j++) a[row, j] = sign * (_p[i, j] - target * _q[i, j]);
+                    for (int j = 0; j < _degree; j++) a[row, j] = sign * (_numeratorBasis[i, j] - target * _denominatorBasis[i, j]);
                     for (int j = 0; j < _degree - 3; j++)
                     {
-                        a[row, _degree + 2 * j] = sign * _p[i, _degree + j];
+                        a[row, _degree + 2 * j] = sign * _numeratorBasis[i, _degree + j];
                         a[row, _degree + 2 * j + 1] = -a[row, _degree + 2 * j];
                     }
                 }
@@ -197,7 +201,7 @@ namespace RCurve
             coefficients = null;
             if (!new LinearFeasibility(a, b).Solve(out double[] z)) return false;
             coefficients = new double[_variableCount];
-            for (int j = 0; j < _degree; j++) coefficients[j] = _minimumQ + z[j];
+            for (int j = 0; j < _degree; j++) coefficients[j] = MinimumDenominator + z[j];
             for (int j = 0; j < _degree - 3; j++) coefficients[_degree + j] = z[_degree + 2 * j] - z[_degree + 2 * j + 1];
             return true;
         }
@@ -230,7 +234,7 @@ namespace RCurve
         // Phase-I simplex for A*z <= b, z >= 0. No external solver or runtime dependency.
         private sealed class LinearFeasibility
         {
-            private const double _epsilon = 1e-10;
+            private const double Epsilon = 1e-10;
             private readonly int _rows;
             private readonly int _columns;
             private readonly double[,] _table;
@@ -263,7 +267,7 @@ namespace RCurve
                 solution = null;
                 int row = 0;
                 for (int i = 1; i < _rows; i++) if (_table[i, _columns + 1] < _table[row, _columns + 1]) row = i;
-                if (_table[row, _columns + 1] < -_epsilon)
+                if (_table[row, _columns + 1] < -Epsilon)
                 {
                     Pivot(row, _columns);
                     bool finished = false;
@@ -271,22 +275,22 @@ namespace RCurve
                     {
                         int enter = -1;
                         for (int j = 0; j <= _columns; j++)
-                            if (_table[_rows, j] < -_epsilon && (enter < 0 || _nonbasic[j] < _nonbasic[enter])) enter = j;
+                            if (_table[_rows, j] < -Epsilon && (enter < 0 || _nonbasic[j] < _nonbasic[enter])) enter = j;
                         if (enter < 0) { finished = true; break; }
                         int leave = -1;
                         for (int i = 0; i < _rows; i++)
                         {
-                            if (_table[i, enter] <= _epsilon) continue;
+                            if (_table[i, enter] <= Epsilon) continue;
                             if (leave < 0) { leave = i; continue; }
                             double ratio = _table[i, _columns + 1] / _table[i, enter];
                             double previous = _table[leave, _columns + 1] / _table[leave, enter];
-                            if (ratio < previous - _epsilon || (Math.Abs(ratio - previous) <= _epsilon && _basic[i] < _basic[leave])) leave = i;
+                            if (ratio < previous - Epsilon || (Math.Abs(ratio - previous) <= Epsilon && _basic[i] < _basic[leave])) leave = i;
                         }
                         if (leave < 0) return false;
                         Pivot(leave, enter);
                     }
                     if (!finished) throw new InvalidOperationException("Minimax feasibility solver exceeded its iteration limit.");
-                    if (Math.Abs(_table[_rows, _columns + 1]) > _epsilon) return false;
+                    if (Math.Abs(_table[_rows, _columns + 1]) > Epsilon) return false;
                 }
                 solution = new double[_columns];
                 for (int i = 0; i < _rows; i++)

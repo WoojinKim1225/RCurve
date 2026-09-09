@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Added reproducible SVG documentation graphs for weighted-curve accuracy and step-by-step Magic interval prediction, correction and evaluation, with raw samples and generation checks.
+- **Breaking:** removed the `SerializableRationalCurve` type migration and scalar `EvaluateDerivative` aliases; use `RationalCurve` and `EvaluateSlope`. Segment evaluation named arguments now use `time` instead of `x`.
+- Clarified fitter fields, normalized-time sampling, editor debounce state and constant names; removed duplicate predicted-interval checks without changing fitting or lookup algorithms.
+- Magic centers key-index residuals before monotonicity/error certification; explicit BruteForce/LUT builds skip predictor fitting. Added forced managed/Burst Magic and binary-fallback coverage at keys, adjacent doubles and random times.
+- Web demo now starts only when attached to a scene object, caches graph samples, bakes on slider release and retains the last good graph after failure.
+
 ## 0.2.0
 
 - Moved the fitter into the player-compatible Unity assembly and added explicit `RationalCurve.Bake()` runtime baking.

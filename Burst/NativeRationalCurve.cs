@@ -105,11 +105,7 @@ namespace RCurve
         // Invalid time or an uncreated owner returns NaN instead of throwing inside Burst.
         public double Evaluate(double time) => Evaluate(time, -1, out _);
 
-        public double Evaluate(double time, ref int intervalHint)
-        {
-            double value = Evaluate(time, intervalHint, out intervalHint);
-            return value;
-        }
+        public double Evaluate(double time, ref int intervalHint) => Evaluate(time, intervalHint, out intervalHint);
 
         private double Evaluate(double time, int intervalHint, out int interval)
         {
@@ -140,8 +136,6 @@ namespace RCurve
         }
 
         // Matches BakedRationalCurve: NaN at non-differentiable joins, reversed slope when mirrored.
-        public double EvaluateDerivative(double time) => EvaluateSlope(time);
-
         public double EvaluateSlope(double time)
         {
             if (!IsCreated || !IsFinite(time)) return double.NaN;
@@ -216,10 +210,7 @@ namespace RCurve
                     _indexPrediction.Evaluate(time - _times[0])));
                 if (time < _times[interval] && interval > 0) interval--;
                 else if (time >= _times[interval + 1] && interval + 1 < _segments.Length) interval++;
-                double left = _times[interval], right = _times[interval + 1];
-                if (time == left) { resolvedInterval = interval; return interval; }
-                if (time == right) { resolvedInterval = Math.Min(interval + 1, _segments.Length - 1); return interval + 1; }
-                if (time > left && time < right) { resolvedInterval = interval; return ~(interval + 1); }
+                if (TryInterval(time, interval, out key, out resolvedInterval)) return key;
             }
             while (low <= high)
             {

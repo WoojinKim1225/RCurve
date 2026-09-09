@@ -34,7 +34,6 @@ public class RationalCurveHornerTests
                 double slope = (Bernstein(dp, u) - value * Bernstein(dq, u)) / denominator / 7;
                 Assert.That(segment.Evaluate(x), Is.EqualTo(value).Within(1e-9 * Math.Max(1, Math.Abs(value))));
                 Assert.That(segment.EvaluateSlope(x), Is.EqualTo(slope).Within(1e-7 * Math.Max(1, Math.Abs(slope))));
-                Assert.That(segment.EvaluateDerivative(x), Is.EqualTo(segment.EvaluateSlope(x)));
             }
             Assert.That(segment.Evaluate(-2), Is.EqualTo(-1));
             Assert.That(segment.Evaluate(5), Is.EqualTo(2));

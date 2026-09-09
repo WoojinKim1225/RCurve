@@ -5,6 +5,7 @@ using RCurve;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
+using UnityEngine;
 
 public class NativeRationalCurveTests
 {
@@ -36,6 +37,44 @@ public class NativeRationalCurveTests
             Segment(2, 5, -2, 3, degree)
         };
         AssertBurstParity(new BakedRationalCurve(times, values, segments, pre, post), BoundaryQueries());
+    }
+
+    [TestCase(0), TestCase(1), TestCase(2)]
+    public void ExplicitMagicMatchesBinaryInBurstAtKeysAndAdjacentDoubles(int shape)
+    {
+        const int count = 65;
+        var keys = new Keyframe[count];
+        for (int i = 0; i < count; i++)
+        {
+            double u = i / (double)(count - 1);
+            double time = shape == 1 ? (-0.1 + Math.Sqrt(0.01 + 3.6 * u)) / 1.8 :
+                shape == 2 && i < count - 1 ? u * 0.01 : u;
+            keys[i] = new Keyframe((float)(-2 + 3 * time), i, float.PositiveInfinity, float.PositiveInfinity);
+        }
+        var source = new AnimationCurve(keys) { preWrapMode = WrapMode.PingPong, postWrapMode = WrapMode.Loop };
+        var curve = RationalCurveBuilder.FromSegments(source, new RationalCurveSegment[count - 1], CurveLookupMode.Magic);
+        var expected = shape == 2 ? CurveLookupStrategy.BinarySearch : CurveLookupStrategy.Magic;
+        Assert.That(curve.ManagedLookup, Is.EqualTo(expected));
+        Assert.That(curve.BurstLookup, Is.EqualTo(expected));
+        var binary = new BakedRationalCurve(curve.KeyTimes.ToArray(), curve.KeyValues.ToArray(), curve.Segments.ToArray(),
+            curve.PreWrapMode, curve.PostWrapMode);
+        var queries = new List<double>(BoundaryQueries());
+        foreach (double time in curve.KeyTimes)
+        {
+            long bits = BitConverter.DoubleToInt64Bits(time);
+            queries.Add(time);
+            queries.Add(time == 0 ? -double.Epsilon : BitConverter.Int64BitsToDouble(bits + (time > 0 ? -1 : 1)));
+            queries.Add(time == 0 ? double.Epsilon : BitConverter.Int64BitsToDouble(bits + (time > 0 ? 1 : -1)));
+        }
+        var random = new System.Random(829 + shape);
+        for (int i = 0; i < 10000; i++) queries.Add(-3 + 6 * random.NextDouble());
+        foreach (double time in queries)
+            if (!double.IsNaN(time) && !double.IsInfinity(time))
+            {
+                AssertNumber(curve.Evaluate(time), binary.Evaluate(time), time);
+                AssertNumber(curve.EvaluateSlope(time), binary.EvaluateSlope(time), time);
+            }
+        AssertBurstParity(curve, queries.ToArray());
     }
 
     [Test]
@@ -100,7 +139,7 @@ public class NativeRationalCurveTests
         finally { owner.Dispose(); }
         Assert.That(owner.IsCreated, Is.False);
         Assert.That(double.IsNaN(owner.Evaluate(0)), Is.True);
-        Assert.That(double.IsNaN(owner.EvaluateDerivative(0)), Is.True);
+        Assert.That(double.IsNaN(owner.EvaluateSlope(0)), Is.True);
         owner.Dispose(); // Only the same cleared owner can be disposed again, not an aliased struct copy.
     }
 
@@ -142,6 +181,7 @@ public class NativeRationalCurveTests
         Assert.That(curve.IsCreated, Is.True);
         Assert.That(curve.PreWrapMode, Is.EqualTo(source.PreWrapMode));
         Assert.That(curve.PostWrapMode, Is.EqualTo(source.PostWrapMode));
+        Assert.That(curve.LookupStrategy, Is.EqualTo(source.BurstLookup));
         new EvaluateJob
         {
             Curve = curve, Times = times, Values = values, Derivatives = derivatives, BurstExecuted = burstExecuted

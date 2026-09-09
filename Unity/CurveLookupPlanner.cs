@@ -2,12 +2,12 @@ using System;
 
 namespace RCurve
 {
-    // Editor-only deterministic policy. Uniform mapped-time workload, no per-bake timing or runtime fitting.
+    // Deterministic bake-time policy. Uniform mapped-time workload, no per-bake benchmarking.
     // Costs are relative lookup units calibrated by CurveLookupStrategyTests, not promised nanoseconds.
     public static class CurveLookupPlanner
     {
         public const int MaximumLutBytes = 1024;
-        private const int _samples = 256;
+        private const int WorkloadSampleCount = 256;
 
         public static void Plan(double[] times, CurveIndexPrediction prediction, CurveLookupMode mode,
             out CurveLookupStrategy managed, out CurveLookupStrategy burst, out int[] table, out double scale)
@@ -45,9 +45,9 @@ namespace RCurve
                 return;
             }
             double comparisons = 0, corrections = 0, lutWork = 0;
-            for (int i = 0; i < _samples; i++)
+            for (int i = 0; i < WorkloadSampleCount; i++)
             {
-                double time = times[0] + length * ((i + 0.5) / _samples);
+                double time = times[0] + length * ((i + 0.5) / WorkloadSampleCount);
                 int key = Array.BinarySearch(times, time);
                 int actual = key >= 0 ? Math.Min(key, segments - 1) : ~key - 1;
                 comparisons += actual + 1;
@@ -59,7 +59,9 @@ namespace RCurve
                     if (actual != table[cell]) lutWork += Math.Log(table[cell + 1] - table[cell] + 2, 2);
                 }
             }
-            comparisons /= _samples; corrections /= _samples; lutWork /= _samples;
+            comparisons /= WorkloadSampleCount;
+            corrections /= WorkloadSampleCount;
+            lutWork /= WorkloadSampleCount;
             double binaryWork = Math.Log(times.Length, 2);
             managed = Select(3 + 4 * binaryWork, 3 + 1.8 * comparisons,
                 table.Length > 0 ? 9 + 3 * lutWork : double.PositiveInfinity,

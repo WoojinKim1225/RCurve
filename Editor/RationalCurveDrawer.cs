@@ -10,7 +10,7 @@ namespace RCurve.Editor
     [CustomPropertyDrawer(typeof(RationalCurve))]
     public sealed class RationalCurveDrawer : PropertyDrawer
     {
-        private const float _errorHeight = 56;
+        private const float ErrorHeight = 56;
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -18,7 +18,7 @@ namespace RCurve.Editor
             if (!property.isExpanded) return height;
             foreach (SerializedProperty setting in Settings(property))
                 height += EditorGUIUtility.standardVerticalSpacing + EditorGUI.GetPropertyHeight(setting, true);
-            if (BuildError(property) != null) height += EditorGUIUtility.standardVerticalSpacing + _errorHeight;
+            if (BuildError(property) != null) height += EditorGUIUtility.standardVerticalSpacing + ErrorHeight;
             return height;
         }
 
@@ -54,7 +54,7 @@ namespace RCurve.Editor
                         y += height;
                     }
                     if (error != null)
-                        EditorGUI.HelpBox(new Rect(position.x, y + EditorGUIUtility.standardVerticalSpacing, position.width, _errorHeight), error, MessageType.Error);
+                        EditorGUI.HelpBox(new Rect(position.x, y + EditorGUIUtility.standardVerticalSpacing, position.width, ErrorHeight), error, MessageType.Error);
                 }
                 bool changed = EditorGUI.EndChangeCheck();
                 Object[] targets = property.serializedObject.targetObjects;
@@ -98,13 +98,13 @@ namespace RCurve.Editor
         private sealed class Pending
         {
             public WeakReference<Object> Target;
-            public string Path;
-            public string Hash;
-            public double Due;
+            public string PropertyPath;
+            public string InputHash;
+            public double BuildAfterTime;
             public Object GetTarget() => Target.TryGetTarget(out Object target) ? target : null;
         }
 
-        private const double _delaySeconds = 0.35;
+        private const double DebounceSeconds = 0.35;
         // Weak references avoid retaining assets and work across Unity 6.0/6.6 without instance-ID APIs.
         // ponytail: linear lookup over inspected fields; index only if inspector scale warrants it.
         private static readonly List<Pending> _observed = new();
@@ -119,7 +119,7 @@ namespace RCurve.Editor
         public static void Queue(Object target, string propertyPath)
         {
             if (target == null || EditorApplication.isPlayingOrWillChangePlaymode) return;
-            Pending pending = _observed.Find(item => item.GetTarget() == target && item.Path == propertyPath);
+            Pending pending = _observed.Find(item => item.GetTarget() == target && item.PropertyPath == propertyPath);
             using var serialized = new SerializedObject(target);
             if (!(serialized.FindProperty(propertyPath)?.boxedValue is RationalCurve curve))
             {
@@ -128,15 +128,15 @@ namespace RCurve.Editor
             }
             if (pending == null)
             {
-                pending = new Pending { Target = new WeakReference<Object>(target), Path = propertyPath };
+                pending = new Pending { Target = new WeakReference<Object>(target), PropertyPath = propertyPath };
                 _observed.Add(pending);
             }
-            if (!curve.NeedsBuild) { pending.Hash = null; return; }
+            if (!curve.NeedsBuild) { pending.InputHash = null; return; }
             string hash = curve.InputHash;
-            if (pending.Hash != hash)
+            if (pending.InputHash != hash)
             {
-                pending.Hash = hash;
-                pending.Due = EditorApplication.timeSinceStartup + _delaySeconds;
+                pending.InputHash = hash;
+                pending.BuildAfterTime = EditorApplication.timeSinceStartup + DebounceSeconds;
             }
         }
 
@@ -145,7 +145,7 @@ namespace RCurve.Editor
             foreach (Pending pending in _observed.ToArray())
             {
                 Object target = pending.GetTarget();
-                if (target != null) Queue(target, pending.Path);
+                if (target != null) Queue(target, pending.PropertyPath);
                 else _observed.Remove(pending);
             }
         }
@@ -156,8 +156,8 @@ namespace RCurve.Editor
             foreach (Pending pending in _observed.ToArray())
             {
                 if (pending.GetTarget() == null) { _observed.Remove(pending); continue; }
-                if (pending.Hash == null || EditorApplication.timeSinceStartup < pending.Due) continue;
-                Rebuild(pending, pending.Hash);
+                if (pending.InputHash == null || EditorApplication.timeSinceStartup < pending.BuildAfterTime) continue;
+                Rebuild(pending, pending.InputHash);
             }
         }
 
@@ -167,18 +167,18 @@ namespace RCurve.Editor
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             QueueObserved();
             foreach (Pending pending in _observed.ToArray())
-                if (pending.Hash != null) Rebuild(pending, pending.Hash);
+                if (pending.InputHash != null) Rebuild(pending, pending.InputHash);
         }
 
         private static void Rebuild(Pending pending, string expectedHash)
         {
-            pending.Hash = null;
+            pending.InputHash = null;
             Object target = pending.GetTarget();
             if (target == null) { _observed.Remove(pending); return; }
             using var serialized = new SerializedObject(target);
-            SerializedProperty property = serialized.FindProperty(pending.Path);
+            SerializedProperty property = serialized.FindProperty(pending.PropertyPath);
             if (!(property?.boxedValue is RationalCurve curve)) { _observed.Remove(pending); return; }
-            if (curve.InputHash != expectedHash) { Queue(target, pending.Path); return; }
+            if (curve.InputHash != expectedHash) { Queue(target, pending.PropertyPath); return; }
             try
             {
                 curve.StoreBuild(RationalCurveBuilder.Build(curve.Source, curve.Settings), expectedHash);

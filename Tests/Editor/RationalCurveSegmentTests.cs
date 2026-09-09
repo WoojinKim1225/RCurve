@@ -18,8 +18,8 @@ public class RationalCurveSegmentTests
         Assert.That(segment.Degree, Is.EqualTo(degree));
         Assert.That(segment.Evaluate(-2), Is.EqualTo(startValue).Within(1e-12));
         Assert.That(segment.Evaluate(5), Is.EqualTo(endValue).Within(1e-12));
-        Assert.That(segment.EvaluateDerivative(-2), Is.EqualTo(-1.5).Within(1e-12));
-        Assert.That(segment.EvaluateDerivative(5), Is.EqualTo(2.25).Within(1e-12));
+        Assert.That(segment.EvaluateSlope(-2), Is.EqualTo(-1.5).Within(1e-12));
+        Assert.That(segment.EvaluateSlope(5), Is.EqualTo(2.25).Within(1e-12));
     }
 
     [Test]
@@ -65,7 +65,7 @@ public class RationalCurveSegmentTests
         {
             double x = -2 + 7.0 * i / 100;
             double derivative = (segment.Evaluate(x + step) - segment.Evaluate(x - step)) / (2 * step);
-            Assert.That(segment.EvaluateDerivative(x), Is.EqualTo(derivative).Within(1e-7));
+            Assert.That(segment.EvaluateSlope(x), Is.EqualTo(derivative).Within(1e-7));
         }
     }
 
@@ -84,7 +84,7 @@ public class RationalCurveSegmentTests
         {
             double x = i / 1000.0;
             Assert.That(segment.Evaluate(x), Is.EqualTo(2).Within(1e-12));
-            Assert.That(segment.EvaluateDerivative(x), Is.EqualTo(0).Within(1e-8));
+            Assert.That(segment.EvaluateSlope(x), Is.EqualTo(0).Within(1e-8));
         }
     }
 
@@ -137,7 +137,7 @@ public class RationalCurveSegmentTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new RationalCurveSegment(0, 1, 0, 1, 0, 0, q, interior, 2));
         var segment = new RationalCurveSegment(0, 1, 0, 1, 0, 0, q, interior);
         Assert.Throws<ArgumentOutOfRangeException>(() => segment.Evaluate(-0.01));
-        Assert.Throws<ArgumentOutOfRangeException>(() => segment.EvaluateDerivative(1.01));
+        Assert.Throws<ArgumentOutOfRangeException>(() => segment.EvaluateSlope(1.01));
         Assert.Throws<ArgumentOutOfRangeException>(() => segment.Evaluate(double.NaN));
     }
 

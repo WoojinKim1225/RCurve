@@ -102,11 +102,7 @@ namespace RCurve
         public double Evaluate(double time) => Evaluate(time, -1, out _);
 
         // The hint is optional caller-owned state. Any stale/invalid value is checked before use.
-        public double Evaluate(double time, ref int intervalHint)
-        {
-            double value = Evaluate(time, intervalHint, out intervalHint);
-            return value;
-        }
+        public double Evaluate(double time, ref int intervalHint) => Evaluate(time, intervalHint, out intervalHint);
 
         private double Evaluate(double time, int intervalHint, out int resolvedInterval)
         {
@@ -122,8 +118,6 @@ namespace RCurve
 
         // NaN means no two-sided derivative: a step, corner, wrap seam or reflection cusp.
         // At smooth reflected portions the sign reverses; strictly clamped regions return zero.
-        public double EvaluateDerivative(double time) => EvaluateSlope(time);
-
         public double EvaluateSlope(double time)
         {
             RequireFinite(time);
@@ -194,10 +188,7 @@ namespace RCurve
                     _indexPrediction.Evaluate(time - _times[0])));
                 if (time < _times[interval] && interval > 0) interval--;
                 else if (time >= _times[interval + 1] && interval + 1 < _segments.Length) interval++;
-                double left = _times[interval], right = _times[interval + 1];
-                if (time == left) { resolvedInterval = interval; return interval; }
-                if (time == right) { resolvedInterval = Math.Min(interval + 1, _segments.Length - 1); return interval + 1; }
-                if (time > left && time < right) { resolvedInterval = interval; return ~(interval + 1); }
+                if (TryInterval(time, interval, out key, out resolvedInterval)) return key;
                 // Defensive fallback for numerical anomalies; never trust a predicted interval blindly.
             }
             key = Array.BinarySearch(_times, time);

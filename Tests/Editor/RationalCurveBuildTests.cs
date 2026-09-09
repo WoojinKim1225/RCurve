@@ -50,15 +50,15 @@ public class RationalCurveBuildTests
             double t = i / 100.0;
             var point = original.Evaluate(t);
             var derivative = original.EvaluateDerivative(t);
-            Assert.That(built.EvaluateDerivative(point.x), Is.EqualTo(derivative.y / derivative.x).Within(0.011));
+            Assert.That(built.EvaluateSlope(point.x), Is.EqualTo(derivative.y / derivative.x).Within(0.011));
         }
         foreach (RationalCurveSegment segment in built.Segments)
         {
             Assert.That(segment.Degree, Is.EqualTo(settings.Degree));
             foreach (double q in segment.DenominatorCoefficients) Assert.That(q, Is.GreaterThanOrEqualTo(1e-6));
         }
-        Assert.That(built.Segments[0].EvaluateDerivative(0), Is.EqualTo(source[0].outTangent).Within(1e-7));
-        Assert.That(built.Segments[built.SegmentCount - 1].EvaluateDerivative(1), Is.EqualTo(source[1].inTangent).Within(1e-7));
+        Assert.That(built.Segments[0].EvaluateSlope(0), Is.EqualTo(source[0].outTangent).Within(1e-7));
+        Assert.That(built.Segments[built.SegmentCount - 1].EvaluateSlope(1), Is.EqualTo(source[1].inTangent).Within(1e-7));
     }
 
     [Test]
