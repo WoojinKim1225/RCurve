@@ -2,7 +2,7 @@
 
 Rational curve baking for Unity, with managed and Burst evaluators.
 
-**Preserves animation-key values and each finite in/out tangent as boundary constraints; approximates between keys.** Steps, discontinuous derivatives and wrapping have explicit rules. This is an experimental **0.3.0** release, not a claim of bit-identical AnimationCurve evaluation everywhere.
+**Preserves animation-key values and each finite in/out tangent as boundary constraints; approximates between keys.** Steps, discontinuous derivatives and wrapping have explicit rules. This is an experimental **0.3.1** release, not a claim of bit-identical AnimationCurve evaluation everywhere.
 
 [Open the interactive WebGL demo](https://woojinkim1225.github.io/RCurve/).
 
@@ -11,7 +11,7 @@ Rational curve baking for Unity, with managed and Burst evaluators.
 Unity Package Manager → **Install package from Git URL**:
 
 ```text
-https://github.com/WoojinKim1225/RCurve.git#v0.3.0
+https://github.com/WoojinKim1225/RCurve.git#v0.3.1
 ```
 
 Package ID: `com.woojinkim1225.rcurve`. Requires Git and a Unity 6 editor. Do not install alongside an older `Assets/RCurve` source copy; back up/migrate that copy first to avoid duplicate assemblies/GUIDs.
@@ -88,7 +88,7 @@ In Package Manager, select **RCurve → Samples → Curve Comparison → Import*
 - Only the signed-error bar is magnified. Marker positions use the actual values.
 - Stop Play Mode before editing/rebaking. The scene demonstrates accuracy, not reliable frame-time benchmarking.
 
-Import **Runtime Web Demo**, add `RCurveWebDemo` to an empty GameObject in your demo scene, then enter Play Mode. It does not auto-start in unrelated scenes. Key values bake when a slider is released; the graph shows the maximum error at 161 sampled points, not a continuous error bound. The preview uses **LeastSquares / Low**, zero tangents and clamped endpoints, rather than the package's default fitting settings. Failed bakes keep the last good graph. This is the source for the WebGL demo; source changes require rebuilding and publishing the player.
+Import **Runtime Web Demo**, add `RCurveWebDemo` to an empty GameObject in your demo scene, then enter Play Mode. It does not auto-start in unrelated scenes. Choose **2–5 equally spaced keys** and adjust each value plus independent incoming/outgoing slopes and weights (handle strengths). Unused endpoint handles are disabled. Changes bake when a slider is released; a yellow dot follows the actual RCurve evaluation in a four-second loop. The graph auto-scales vertically and shows the maximum error at 161 sampled points, not a continuous error bound. The preview uses **LeastSquares / Low** and clamped endpoints, rather than the package's default fitting settings. Weights range from 0.01 to 1; unsupported or unfittable combinations report an error and keep the last good graph and moving point. This is the source for the WebGL demo; source changes require rebuilding and publishing the player.
 
 Run **Tools → RCurve → Check Web Demo** after importing to check baking, endpoint clamping and recovery from invalid input.
 

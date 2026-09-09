@@ -7,12 +7,13 @@ The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 
 - Development editor: Unity 6000.6.0f1.
 - Unity 6000.5.8f1 is used as a separate clean import/test host.
 - Unity 6000.0 is not installed in the development environment; direct 6.0 execution remains unverified.
-- Other 6.x editors, URP/HDRP hosts, player AOT/IL2CPP and live sample input/rendering require separate validation.
+- Other 6.x editors, render-pipeline hosts and player/browser configurations beyond those listed below require separate validation.
 
 ## Validation results
 
 | Version / host | Installation | Results |
 |---|---|---|
+| 0.3.1 / Unity 6000.5.8f1 | Local UPM + runtime web demo source | **292/292 Edit Mode passed; expanded sample checks passed; release WebGL IL2CPP build succeeded; Firefox 153 headless rendering/input smoke check passed** |
 | 0.3.0 / Unity 6000.5.8f1 | Local UPM + runtime web demo source | **292/292 Edit Mode passed; WebGL IL2CPP build succeeded; Linux Mono headless player checks passed, including actual Burst execution** |
 | 0.2.0 / Unity 6000.5.8f1 | Local UPM, sample not imported | **284/284 Edit Mode passed; URP 17.5.0 WebGL build succeeded** |
 | 0.1.0 / Unity 6000.5.8f1 | Local UPM, sample not imported | **283/283 Edit Mode passed** |
@@ -20,7 +21,7 @@ The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 
 | 0.1.0 / Unity 6000.6.0f1 | Local UPM + official Package Manager sample import | **285/285 Edit Mode passed** |
 | 0.1.0 / Unity 6000.6.0f1 | Public GitHub Git URL + official sample import | **285/285 Edit Mode passed** |
 
-Each host had an empty Assets directory before installation (apart from the sample-import validation helper). Core tests do not depend on the optional sample. The numbered test counts are batch Edit Mode checks on Linux. For 0.3.0, separate CLI player checks also covered runtime baking, Magic correction, 1,025 wrapped queries, serialization and an actual Burst job in a Linux Mono player. WebGL IL2CPP compilation passed; browser input/rendering and Linux IL2CPP execution remain unverified.
+Each host had an empty Assets directory before installation (apart from the sample-import validation helper). Core tests do not depend on the optional sample. The numbered test counts are batch Edit Mode checks on Linux. For 0.3.0, separate CLI player checks also covered runtime baking, Magic correction, 1,025 wrapped queries, serialization and an actual Burst job in a Linux Mono player. For 0.3.1, a local release WebGL build was also exercised in Firefox 153 headless: graph rendering, point movement, switching to five and two keys, and slope/weight controls were checked. This is a smoke check, not browser/device-wide certification. Linux IL2CPP execution remains unverified.
 
 ## Dependencies
 
