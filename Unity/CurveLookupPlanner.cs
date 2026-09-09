@@ -1,6 +1,6 @@
 using System;
 
-namespace RCurve.Editor
+namespace RCurve
 {
     // Editor-only deterministic policy. Uniform mapped-time workload, no per-bake timing or runtime fitting.
     // Costs are relative lookup units calibrated by CurveLookupStrategyTests, not promised nanoseconds.

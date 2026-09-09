@@ -1,6 +1,6 @@
 using System;
 
-namespace RCurve.Editor
+namespace RCurve
 {
     // Small editor-only solvers. P and Q are affine in the free Bernstein coefficients.
     // LS is damped Gauss-Newton (local); minimax is sampled LP feasibility + bisection.

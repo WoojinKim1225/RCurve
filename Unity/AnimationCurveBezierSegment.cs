@@ -2,7 +2,7 @@ using System;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace RCurve.Editor
+namespace RCurve
 {
     // Editor-side source for fitting. Control points use normalized X and unchanged Y.
     public sealed class AnimationCurveBezierSegment

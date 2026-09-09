@@ -1,7 +1,6 @@
 using System;
 using NUnit.Framework;
 using RCurve;
-using RCurve.Editor;
 using UnityEngine;
 
 public class CurveIndexPredictionTests

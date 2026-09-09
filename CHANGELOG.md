@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+- Moved the fitter into the player-compatible Unity assembly and added explicit `RationalCurve.Bake()` runtime baking.
+- Added an importable interactive runtime graph sample for WebGL demos.
+- Documented the rational Bernstein fitting principle and runtime cost.
+
 ## 0.1.0
 
 Initial experimental release.

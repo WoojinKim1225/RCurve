@@ -24,6 +24,16 @@ public class RationalCurveBuildTests
     }
 
     [Test]
+    public void RuntimeBakeStoresCurrentSource()
+    {
+        var curve = new RationalCurve(AnimationCurve.EaseInOut(0, 0, 1, 1));
+        curve.Bake();
+        Assert.That(curve.HasBake, Is.True);
+        Assert.That(curve.IsStale, Is.False);
+        Assert.That(curve.Evaluate(0.5), Is.EqualTo(curve.Source.Evaluate(0.5f)).Within(0.0011));
+    }
+
+    [Test]
     public void BuildsWeightedCurvesWithBothObjectivesAndEveryDegree([Values] CurveFitObjective objective, [Values] CurveFitQuality quality)
     {
         AnimationCurve source = Weighted();

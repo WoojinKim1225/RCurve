@@ -1,6 +1,6 @@
 using System;
 using NUnit.Framework;
-using RCurve.Editor;
+using RCurve;
 using Unity.Mathematics;
 using UnityEngine;
 

@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using NUnit.Framework;
 using RCurve;
-using RCurve.Editor;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;

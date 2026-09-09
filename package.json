@@ -1,8 +1,8 @@
 {
   "name": "com.woojinkim1225.rcurve",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "RCurve",
-  "description": "Editor-baked rational AnimationCurves with key/tangent constraints, Burst evaluation, adaptive lookup, and optional interval hints.",
+  "description": "Rational AnimationCurve baking with key/tangent constraints, Burst evaluation, adaptive lookup, and optional interval hints.",
   "unity": "6000.0",
   "license": "MIT",
   "author": { "name": "WoojinKim1225", "url": "https://github.com/WoojinKim1225" },
@@ -15,7 +15,8 @@
     "com.unity.modules.jsonserialize": "1.0.0"
   },
   "samples": [
-    { "displayName": "Curve Comparison", "description": "Side-by-side AnimationCurve and RationalCurve playback with a Canvas/uGUI dashboard.", "path": "Samples~/Comparison" }
+    { "displayName": "Curve Comparison", "description": "Side-by-side AnimationCurve and RationalCurve playback with a Canvas/uGUI dashboard.", "path": "Samples~/Comparison" },
+    { "displayName": "Runtime Web Demo", "description": "Interactive runtime baking and graph UI suitable for a WebGL build.", "path": "Samples~/Runtime Web Demo" }
   ],
   "keywords": ["animation", "curve", "rational", "burst", "baking"]
 }

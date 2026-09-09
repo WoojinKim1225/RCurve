@@ -6,7 +6,7 @@ using UnityEngine.Scripting.APIUpdating;
 
 namespace RCurve
 {
-    // Unity-facing storage only. Runtime evaluation restores saved coefficients, never fits the source.
+    // Unity-facing source and baked storage. Fitting happens only when editor tooling or Bake() requests it.
     [Serializable]
     [MovedFrom(true, sourceNamespace: "RCurve", sourceAssembly: null, sourceClassName: "SerializableRationalCurve")]
     public sealed class RationalCurve : ISerializationCallbackReceiver
@@ -85,7 +85,7 @@ namespace RCurve
         {
             get
             {
-                if (!_hasBake) throw new InvalidOperationException("The curve has not been baked in the editor.");
+                if (!_hasBake) throw new InvalidOperationException("The curve has not been baked.");
                 if (_cached != null) return _cached;
                 var segments = new RationalCurveSegment[_baked.Segments.Length];
                 for (int i = 0; i < segments.Length; i++)
@@ -107,6 +107,13 @@ namespace RCurve
         public double Evaluate(double time, ref int intervalHint) => BakedCurve.Evaluate(time, ref intervalHint);
         public double EvaluateSlope(double time) => BakedCurve.EvaluateSlope(time);
         public double EvaluateDerivative(double time) => EvaluateSlope(time);
+
+        // Runtime fitting is intentionally explicit because it allocates and can be expensive.
+        public void Bake()
+        {
+            string hash = InputHash;
+            StoreBuild(RationalCurveBuilder.Build(_source, _settings), hash);
+        }
 
         public RationalCurve(AnimationCurve source = null, CurveFitSettings settings = null)
         {

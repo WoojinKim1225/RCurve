@@ -1,7 +1,16 @@
 {
   "name": "RCurve.Burst.Tests",
-  "references": ["RCurve.Runtime", "RCurve.Unity", "RCurve.Editor", "RCurve.Burst", "Unity.Burst"],
-  "includePlatforms": ["Editor"],
-  "optionalUnityReferences": ["TestAssemblies"],
+  "references": [
+    "RCurve.Runtime",
+    "RCurve.Unity",
+    "RCurve.Burst",
+    "Unity.Burst"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
   "autoReferenced": false
 }

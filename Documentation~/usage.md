@@ -2,7 +2,7 @@
 
 ## 1. 무엇을 바꾸는가
 
-원본 AnimationCurve는 그대로 편집한다. Editor에서 구간별 rational 함수로 bake하고, 플레이어에서는 저장된 계수를 평가한다.
+원본 AnimationCurve는 그대로 편집한다. 기본 흐름은 Editor에서 구간별 rational 함수로 bake하고 플레이어에서 저장된 계수를 평가하는 것이다. 런타임에 사용자가 만든 커브는 명시적으로 `Bake()`할 수도 있다.
 
 **애니메이션 키의 값과 양쪽 유한 접선 기울기는 경계 조건으로 보존하고, 키 사이만 근사한다.** 좌우 접선이 다른 키는 `inTangent`와 `outTangent`를 각각 보존한다. 전체 구간에서 비트 단위 일치를 보장하는 변환은 아니며, 키 사이의 높이/기울기는 지정한 허용 오차 안의 근사를 목표로 한다.
 
@@ -11,7 +11,7 @@
 - 사용자 필드: `RationalCurve` (`RCurve.Unity`)
 - 불변 관리형 결과: `BakedRationalCurve` (`RCurve.Runtime`, UnityEngine 참조 없음)
 - Job용 스냅샷: `NativeRationalCurve` (`RCurve.Burst`)
-- fitting: `RationalCurveBuilder` (`RCurve.Editor`)
+- fitting: `RationalCurveBuilder` (`RCurve.Unity`, Editor/player 공용)
 
 기본값은 **Minimax / High(5/5) / Lookup Auto**다.
 
@@ -57,7 +57,7 @@ public class Motion : MonoBehaviour
 
 ### Auto는 무엇을 기준으로 선택하나
 
-`Editor/CurveLookupPlanner.cs`는 무작위 접근 벤치마크로 보정한 상대 비용 모델이다. 매 bake마다 Stopwatch/Burst 컴파일을 실행하지 않고 다음 정보를 사용한다.
+`Unity/CurveLookupPlanner.cs`는 무작위 접근 벤치마크로 보정한 상대 비용 모델이다. 매 bake마다 Stopwatch/Burst 컴파일을 실행하지 않고 다음 정보를 사용한다.
 
 - 균일한 mapped-time 256개 지점의 평균 선형 비교 수
 - 이진 검색 깊이
@@ -101,7 +101,15 @@ var editable = new RationalCurve(sourceAnimationCurve, settings);
 editable.StoreBuild(RationalCurveBuilder.Build(editable.Source, editable.Settings), editable.InputHash);
 ```
 
-플레이어에는 이 fitting 코드를 넣지 않는다. Inspector 밖에서 source를 수정하는 도구는 Editor의 Build/StoreBuild 또는 CurveAutoBuild.Queue를 명시적으로 호출한다.
+Inspector 밖에서 source를 수정하는 Editor 도구는 Build/StoreBuild 또는 CurveAutoBuild.Queue를 명시적으로 호출한다. 플레이어에서 사용자가 만든 커브는 변경이 끝난 시점에 한 번 bake한다:
+
+```csharp
+var runtimeCurve = new RationalCurve(userAnimationCurve);
+runtimeCurve.Bake(); // 할당과 fitting 비용이 있으므로 매 프레임 호출하지 않는다.
+double value = runtimeCurve.Evaluate(time);
+```
+
+`Bake()`는 동기식이며 실패 시 예외를 전달한다. 미리 정해진 커브는 Editor bake를 유지하는 편이 로딩 비용이 작다.
 
 ```csharp
 using var native = NativeRationalCurve.Create(editable.BakedCurve, Allocator.TempJob);

@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using RCurve.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;

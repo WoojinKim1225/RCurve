@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace RCurve.Editor
+namespace RCurve
 {
     public static class RationalCurveBuilder
     {

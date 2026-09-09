@@ -1,5 +1,8 @@
 {
   "name": "RCurve.Unity",
   "rootNamespace": "RCurve",
-  "references": ["RCurve.Runtime"]
+  "references": [
+    "RCurve.Runtime",
+    "Unity.Mathematics"
+  ]
 }
