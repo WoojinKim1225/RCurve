@@ -2,7 +2,7 @@
 
 Rational curve baking for Unity, with managed and Burst evaluators.
 
-**Preserves animation-key values and each finite in/out tangent as boundary constraints; approximates between keys.** Steps, discontinuous derivatives and wrapping have explicit rules. This is an experimental **0.3.1** release, not a claim of bit-identical AnimationCurve evaluation everywhere.
+**Preserves animation-key values and each finite in/out tangent exactly; between keys, stays within value and slope error bounds proven for every segment.** Steps, discontinuous derivatives and wrapping have explicit rules. This is a pre-1.0 release (**0.5.0**); the [Contract](#contract) is what 1.0 will keep.
 
 [Open the interactive WebGL demo](https://woojinkim1225.github.io/RCurve/).
 
@@ -11,7 +11,7 @@ Rational curve baking for Unity, with managed and Burst evaluators.
 Unity Package Manager → **Install package from Git URL**:
 
 ```text
-https://github.com/WoojinKim1225/RCurve.git#v0.3.1
+https://github.com/WoojinKim1225/RCurve.git#v0.5.0
 ```
 
 Package ID: `com.woojinkim1225.rcurve`. Requires Git and a Unity 6 editor. Do not install alongside an older `Assets/RCurve` source copy; back up/migrate that copy first to avoid duplicate assemblies/GUIDs.
@@ -35,12 +35,15 @@ public class Motion : MonoBehaviour
 }
 ```
 
-Edit the source in the Inspector. Expand its foldout for fitting and lookup settings. The Editor bakes after a short debounce. Defaults: **Minimax / High (5/5) / Auto lookup**.
+Edit the source in the Inspector. Expand its foldout for fitting and lookup settings. Defaults: **Minimax / High (5/5) / Auto lookup**.
 
-Runtime fitting is also available for tools and user-authored curves:
+The Editor bakes whenever a curve changes: Inspector edits after a short debounce, Undo-recorded edits to fields no Inspector is drawing, `.asset`/`.prefab` files reimported from disk (text edits, merges), and scenes as they open. Bakes are saved with the asset; players only evaluate.
+
+Code builds a curve from a finished `AnimationCurve` and bakes it once. The source is copied in and only a copy comes out (`CopySource()`), so a baked curve cannot be edited from code; make a new one instead:
 
 ```csharp
-curve.Bake(); // Allocates and may be expensive; call after edits, not every frame.
+var curve = new RationalCurve(animationCurve);
+curve.Bake(); // Allocates and may be expensive; not every frame.
 ```
 
 ## How it works
@@ -51,19 +54,20 @@ For every smooth source interval, RCurve converts Unity's weighted Hermite key d
 P(u) = Σ pᵢ Bᵢ,ₙ(u)    Q(u) = Σ qᵢ Bᵢ,ₙ(u), qᵢ > 0    R(u) = P(u) / Q(u)
 ```
 
-The endpoint numerator coefficients are determined by the key values and finite tangents. Least-squares or sampled minimax fitting chooses the remaining coefficients; intervals subdivide until sampled value and slope tolerances pass. Evaluation converts the Bernstein coefficients once to an allocation-free Horner form. See the [interactive graph](https://woojinkim1225.github.io/RCurve/) and [usage guide](Documentation~/usage.md).
+The endpoint numerator coefficients are determined by the key values and finite tangents. Least-squares or minimax fitting on samples chooses the remaining coefficients. Each segment's value and slope errors are then proven over its whole interval: in the Bézier parameter both the source and the composed fit are polynomial, so each bound is the nonnegativity of a polynomial, decided by its Bernstein coefficients with de Casteljau refinement. A segment that cannot be proven is subdivided. Evaluation converts the Bernstein coefficients once to an allocation-free Horner form. See the [interactive graph](https://woojinkim1225.github.io/RCurve/) and [usage guide](Documentation~/usage.md).
 
 ![A weighted Unity AnimationCurve and its RCurve bake overlap; a separate lower plot shows the signed approximation error.](Documentation~/images/curve-accuracy.svg)
 
-Actual output from the current working tree in Unity 6000.5.8f1, using default fitting settings. The upper plot is not magnified; the lower error axis is independently scaled. This example's maximum absolute error over 513 shared time samples is about **1.73 × 10⁻⁶**, not a continuous error guarantee or a typical-case claim. [Inputs, raw data and regeneration instructions](Documentation~/graphs.md).
+Generated with RCurve 0.3.0 in Unity 6000.5.8f1, using default fitting settings. The upper plot is not magnified; the lower error axis is independently scaled. This example's maximum absolute error over 513 shared time samples is about **1.73 × 10⁻⁶**; that is a measurement of one curve, while the guarantee is the error bound. [Inputs, raw data and regeneration instructions](Documentation~/graphs.md).
 
 - `Evaluate(time)` returns the value; `EvaluateSlope(time)` returns dy/dt.
 - `Evaluate(time, ref intervalHint)` optionally reuses a caller-owned interval. Do not share mutable hints between playback streams/jobs.
 - `curve.BakedCurve` exposes immutable managed data.
-- `curve.Bake()` fits and stores the current source in Editor or player code.
+- `curve.Bake()` fits and stores the source in Editor or player code.
+- `StartTime`, `EndTime`, `StartValue`, `EndValue` give the first and last keys.
 - `NativeRationalCurve.Create(curve.BakedCurve, allocator)` makes a Job snapshot. Complete readers before disposing one owner; struct copies share allocations.
 - Use Burst `FloatMode.Strict` / `FloatPrecision.High`. Calling a method directly does not make it Burst-compiled.
-- Failed rebakes keep the last good result in the asset and Inspector. An unbaked curve cannot be evaluated, and neither can one whose source or settings changed since its bake: the first evaluation after loading checks this and throws.
+- Evaluation throws for an unbaked curve, one whose source or settings changed since its bake, or a bake in a newer format (see [Contract](#contract)).
 
 ## Lookup strategies
 
@@ -110,7 +114,7 @@ What 1.0 will keep, stated now so it can be checked:
 - API baseline: **Unity 6000.0+**. Unexecuted editor versions are not certified; see [compatibility notes](Documentation~/compatibility.md).
 - Core `RCurve.Runtime` has no UnityEngine dependency. Unity serialization and fitting, Burst, Editor tooling, and sample UI are separate assemblies.
 - Dependencies declare Burst 1.8.30, Mathematics 1.3.2 and uGUI 2.0.0. Newer Unity editors may resolve built-in newer versions.
-- Weighted segments with stationary X are currently rejected. The fit itself uses samples, but every baked segment's value and slope errors are proven over its whole interval (Bernstein sign test against the Bezier source); a segment that cannot be proven is subdivided.
+- Weighted segments with a stationary X (a zero-length handle, or both handles at full length) are rejected with `NotSupportedException`.
 - Some large weighted inputs can exceed the Minimax simplex iteration limit. LeastSquares is a separate explicit option, not a silent fallback.
 - `EvaluateSlope` may return NaN at corners, steps and wrap seams with no common derivative. Input time is wrapped before evaluation.
 - Unity JSON round-tripping can shift doubles by a few ULP. Input signatures use semantic binary data rather than editor-version-dependent AnimationCurve JSON.
@@ -120,7 +124,7 @@ What 1.0 will keep, stated now so it can be checked:
 
 See [testing](Documentation~/testing.md), [사용 가이드 (Korean)](Documentation~/usage.md), and [changelog](CHANGELOG.md).
 
-Tests compare managed/Burst values and slopes, exact boundaries, weighted fits, serialization, hints and lookup strategies. Performance tests report measurements without flaky timing thresholds.
+Tests compare managed/Burst values and slopes, exact boundaries, weighted fits, serialization, hints and lookup strategies. Contract tests check the error proof against dense sampling, a 500-curve differential run against the exact source and Unity, bit-identical rebakes, format versioning and edge cases. Performance tests report measurements without flaky timing thresholds.
 
 ## License
 

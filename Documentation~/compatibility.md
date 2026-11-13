@@ -5,7 +5,7 @@
 The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 6 APIs, but a minimum version in package.json is not evidence of execution on every Unity release.
 
 - Development editor: Unity 6000.6.0f1.
-- Unity 6000.5.8f1 is used as a separate clean import/test host.
+- Unity 6000.5.8f1 is used as a separate clean import/test host up to 0.3.1; Unity 6000.6.8f1 from 0.4.0.
 - Unity 6000.0 is not installed in the development environment; direct 6.0 execution remains unverified.
 - Other 6.x editors, render-pipeline hosts and player/browser configurations beyond those listed below require separate validation.
 
@@ -13,6 +13,10 @@ The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 
 
 | Version / host | Installation | Results |
 |---|---|---|
+| 0.5.0 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); both samples copied into Assets | **304/304 Edit Mode passed, including the sample tests and the 500-curve contract tests** |
+| 0.4.2 / Unity 6000.6.8f1 | Local UPM (`file:` working copy), sample not imported | **297/297 Edit Mode passed** |
+| 0.4.1 / Unity 6000.6.8f1 | Local UPM (`file:` working copy), sample not imported | **294/294 Edit Mode passed** |
+| 0.4.0 / Unity 6000.6.8f1 | Local UPM (`file:` working copy), sample not imported | **293/293 Edit Mode passed** |
 | 0.3.1 / Unity 6000.5.8f1 | Local UPM + runtime web demo source | **292/292 Edit Mode passed; expanded sample checks passed; release WebGL IL2CPP build succeeded; Firefox 153 headless rendering/input smoke check passed** |
 | 0.3.0 / Unity 6000.5.8f1 | Local UPM + runtime web demo source | **292/292 Edit Mode passed; WebGL IL2CPP build succeeded; Linux Mono headless player checks passed, including actual Burst execution** |
 | 0.2.0 / Unity 6000.5.8f1 | Local UPM, sample not imported | **284/284 Edit Mode passed; URP 17.5.0 WebGL build succeeded** |
@@ -21,7 +25,7 @@ The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 
 | 0.1.0 / Unity 6000.6.0f1 | Local UPM + official Package Manager sample import | **285/285 Edit Mode passed** |
 | 0.1.0 / Unity 6000.6.0f1 | Public GitHub Git URL + official sample import | **285/285 Edit Mode passed** |
 
-Each host had an empty Assets directory before installation (apart from the sample-import validation helper). Core tests do not depend on the optional sample. The numbered test counts are batch Edit Mode checks on Linux. For 0.3.0, separate CLI player checks also covered runtime baking, Magic correction, 1,025 wrapped queries, serialization and an actual Burst job in a Linux Mono player. For 0.3.1, a local release WebGL build was also exercised in Firefox 153 headless: graph rendering, point movement, switching to five and two keys, and slope/weight controls were checked. This is a smoke check, not browser/device-wide certification. Linux IL2CPP execution remains unverified.
+Each host had an empty Assets directory before installation (apart from the sample-import validation helper). Core tests do not depend on the optional sample. The numbered test counts are batch Edit Mode checks on Linux. For 0.3.0, separate CLI player checks also covered runtime baking, Magic correction, 1,025 wrapped queries, serialization and an actual Burst job in a Linux Mono player. For 0.3.1, a local release WebGL build was also exercised in Firefox 153 headless: graph rendering, point movement, switching to five and two keys, and slope/weight controls were checked. This is a smoke check, not browser/device-wide certification. From 0.4.0 the results are Edit Mode runs only: no player, WebGL or Burst-in-player check was repeated. Linux IL2CPP execution remains unverified.
 
 ## Dependencies
 

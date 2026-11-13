@@ -4,7 +4,7 @@
 
 원본 AnimationCurve는 그대로 편집한다. 기본 흐름은 Editor에서 구간별 rational 함수로 bake하고 플레이어에서 저장된 계수를 평가하는 것이다. 런타임에 사용자가 만든 커브는 명시적으로 `Bake()`할 수도 있다.
 
-**애니메이션 키의 값과 양쪽 유한 접선 기울기는 경계 조건으로 보존하고, 키 사이만 근사한다.** 좌우 접선이 다른 키는 `inTangent`와 `outTangent`를 각각 보존한다. 전체 구간에서 비트 단위 일치를 보장하는 변환은 아니며, 키 사이의 높이/기울기는 지정한 허용 오차 안의 근사를 목표로 한다.
+**애니메이션 키의 값과 양쪽 유한 접선 기울기는 경계 조건으로 보존하고, 키 사이만 근사한다.** 좌우 접선이 다른 키는 `inTangent`와 `outTangent`를 각각 보존한다. 키 사이의 높이/기울기는 지정한 허용 오차 안에 있음을 구간마다 증명한다(7절). Unity의 `AnimationCurve.Evaluate`와 비트 단위로 같은 값을 내는 변환은 아니다.
 
 계단은 별도 규칙으로 처리한다. 좌우 기울기/값이 이어지지 않는 키에는 하나의 공통 미분값이 없으므로 `EvaluateSlope`는 NaN을 반환할 수 있다. 범위 밖 시간과 Loop의 마지막 시각은 원본 WrapMode로 먼저 매핑한다.
 
@@ -17,7 +17,7 @@
 
 ![Weighted AnimationCurve와 RCurve bake의 실제 값 비교 및 별도 축의 부호 있는 오차 그래프](images/curve-accuracy.svg)
 
-위는 실제 값이며 확대하지 않았다. 아래만 오차를 독립적인 축으로 표시한다. Unity 6000.5.8f1에서 기본 설정으로 생성했으며, 이 예시의 513개 공통 시각에서 최대 절대 오차는 약 **1.73 × 10⁻⁶**이다. 다른 커브의 정확도나 연속 구간의 오차 상한을 보장하는 수치는 아니다. [입력·원시 데이터·재생성 방법](graphs.md)을 참고한다.
+위는 실제 값이며 확대하지 않았다. 아래만 오차를 독립적인 축으로 표시한다. RCurve 0.3.0과 Unity 6000.5.8f1, 기본 설정으로 생성했으며, 이 예시의 513개 공통 시각에서 최대 절대 오차는 약 **1.73 × 10⁻⁶**이다. 한 커브의 측정값이며, 보장은 7절의 오차 기준이다. [입력·원시 데이터·재생성 방법](graphs.md)을 참고한다.
 
 ## 2. Inspector에서 편집
 
@@ -38,7 +38,7 @@ public class Motion : MonoBehaviour
 }
 ```
 
-일반 Inspector는 `▶ 이름 [곡선]` 한 줄이다. 펼치면 목적함수, 차수, 높이/기울기 오차, 최대 분할 깊이, Lookup Mode가 나온다. 마지막 편집 후 0.35초가 지나고 드래그가 끝나면 bake한다. Play Mode에서는 fitting하지 않는다.
+일반 Inspector는 `▶ 이름 [곡선]` 한 줄이다. 펼치면 목적함수, 차수, 높이/기울기 오차, 최대 분할 깊이, Lookup Mode가 나온다. 마지막 편집 후 0.35초가 지나고 드래그가 끝나면 bake한다. Inspector에 그려지지 않은 필드도 Undo로 기록된 수정이면 같은 방식으로, 디스크에서 다시 임포트된 `.asset`/`.prefab`(텍스트 수정, 머지)은 즉시 bake해 저장하고, 씬은 열 때 bake한 뒤 dirty로 표시한다. Play Mode에서는 fitting하지 않는다.
 
 - 기본 오차: 높이 0.001, 기울기 0.01, 최대 분할 깊이 8.
 - 차수: Low 3/3, Medium 4/4, High 5/5, XHigh 6/6.
@@ -190,7 +190,9 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 - `RationalCurveBenchmarkTests`: Unity / rational / Burst 랜덤 접근 비교.
 - `RationalCurveHintBenchmarkTests`: 정방향/역방향/Loop/1% seek/랜덤 접근의 힌트 유무 비교.
 - `CurveComparisonSceneTests`: 저장된 데모 bake/마커/오차를 Edit Mode에서 확인. 실제 Play/렌더링 검증과는 다르다.
+- `SegmentCertificateTests`: Bernstein 부호 판정, 합성·구간 제한의 정확성, 실제 fit 구간에서 촘촘한 실측 최대 오차의 1.05배는 증명되고 0.95배는 거부되는지.
+- `ContractTests`: 형식 버전 기록과 더 새 형식 거부, 재bake의 비트 동일성, 500개 무작위 커브의 정확한 원본 대비 오차 한도(전부 단언)와 Unity 대비(weighted가 아닌 구간만 단언), 경계 케이스(키 1개·0개, 길이 0/최대 핸들, 범위 밖 가중치, 계단, 같은 시각·역순 키).
 
 속도에 pass/fail 한도를 걸지 않는다. 비용 모델은 특정 에디터/CPU에서 보정한 정책이며 플레이어/AOT의 최속 보장이 아니다.
 
-알려진 한계: dx/dt=0인 weighted 구간 거부, fitting 자체는 표본 기반(각 구간의 값·기울기 오차는 Bezier 매개변수 s에서 Bernstein 계수 부호로 구간 전체에 대해 증명하고, 증명되지 않으면 분할), 큰 weighted 입력 일부에서 Minimax simplex 반복 한도 초과, JsonUtility의 double 십진 왕복에서 수 ULP 변화 가능. Unity 6.0, URP/HDRP 호스트 및 IL2CPP 실행 검증은 별도 작업이다.
+알려진 한계: dx/dt=0인 weighted 구간 거부, 증명되지 않는 구간은 분할하므로 구간 수가 표본 검증 때보다 늘 수 있음(무작위 300개 커브에서 +1.6%), 큰 weighted 입력 일부에서 Minimax simplex 반복 한도 초과, JsonUtility의 double 십진 왕복에서 수 ULP 변화 가능. Unity 6.0, URP/HDRP 호스트 및 IL2CPP 실행 검증은 별도 작업이다.
