@@ -1,0 +1,1 @@
+{ "name": "RCurve.PlayerCheck.Editor", "references": ["RCurve.Runtime", "RCurve.Unity", "RCurve.PlayerCheck"], "includePlatforms": ["Editor"] }

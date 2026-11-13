@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.4
+
+- **Supported editors are now Unity 6000.6+** (`package.json` declared 6000.0, which was never run). Earlier Unity 6 editors may work but are not supported.
+- Checked a built Linux x64 Mono player: Burst compiled ahead of time ran every query, and 16 editor-baked (deserialized) and 20 player-baked curves across all four lookup strategies matched the managed evaluator bit for bit. The check is in `Documentation~/tools/PlayerCheck` (see Testing). IL2CPP players remain unverified.
+
 ## 0.5.3
 
 - Magic's managed lookup now throws if it misses after its one correction, instead of silently falling back to binary search. The miss is unreachable while the predictor's certificate holds (monotone over the whole range, within 1 − 10⁻⁶ of every key's index, checked at bake and load); a new test queries 283 Magic curves at keys, adjacent doubles, midpoints, random and wrapped times without reaching it. The Burst lookup, which cannot rely on exceptions in release players, keeps the binary search there.

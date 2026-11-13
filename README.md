@@ -107,14 +107,14 @@ What 1.0 will keep, stated now so it can be checked:
 
 ## Compatibility and limits
 
-- API baseline: **Unity 6000.0+**. Unexecuted editor versions are not certified; see [compatibility notes](Documentation~/compatibility.md).
+- Supported editors: **Unity 6000.6+**, the versions it is tested on. Earlier Unity 6 releases may work but are not supported; see [compatibility notes](Documentation~/compatibility.md).
 - Core `RCurve.Runtime` has no UnityEngine dependency. Unity serialization and fitting, Burst, Editor tooling, and sample UI are separate assemblies.
 - Dependencies declare Burst 1.8.30, Mathematics 1.3.2 and uGUI 2.0.0. Newer Unity editors may resolve built-in newer versions.
 - Weighted segments with a stationary X (a zero-length handle, or both handles at full length) are rejected with `NotSupportedException`.
 - Some large weighted inputs can exceed the Minimax simplex iteration limit. LeastSquares is a separate explicit option, not a silent fallback.
 - `EvaluateSlope` may return NaN at corners, steps and wrap seams with no common derivative. Input time is wrapped before evaluation.
 - Unity JSON round-tripping can shift doubles by a few ULP. Input signatures use semantic binary data rather than editor-version-dependent AnimationCurve JSON.
-- No IL2CPP/player-AOT or all-render-pipeline claim. Do not infer universal speedups from Editor measurements.
+- Players: a Linux x64 Mono player with Burst AOT is checked (values and slopes bit-identical to the managed evaluator). IL2CPP players have not been run. No render-pipeline claim. Do not infer universal speedups from Editor measurements.
 
 ## Tests and documentation
 

@@ -1,9 +1,9 @@
 {
   "name": "com.woojinkim1225.rcurve",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "displayName": "RCurve",
   "description": "Rational AnimationCurve baking with key/tangent constraints, Burst evaluation, adaptive lookup, and optional interval hints.",
-  "unity": "6000.0",
+  "unity": "6000.6",
   "license": "MIT",
   "author": { "name": "WoojinKim1225", "url": "https://github.com/WoojinKim1225" },
   "repository": { "type": "git", "url": "https://github.com/WoojinKim1225/RCurve.git" },

@@ -1,0 +1,1 @@
+{ "name": "RCurve.PlayerCheck", "references": ["RCurve.Runtime", "RCurve.Unity", "RCurve.Burst", "Unity.Burst"], "allowUnsafeCode": false }

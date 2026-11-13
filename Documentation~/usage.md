@@ -175,7 +175,7 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 ### uGUI와 Unity 6 버전
 
 - `com.unity.ugui: 2.0.0`을 선언한다. Editor가 내장 최신판으로 대체할 수 있으며 Unity 6.6에서 실제 해석 버전은 2.6.0이다.
-- 기본 Canvas/uGUI API와 `LegacyRuntime.ttf`를 사용한다. TMP나 UIElements에 직접 의존하지 않는다. 6.0~6.6 공통 API를 목표로 하되 실제 미실행 버전을 검증 완료라고 표현하지 않는다.
+- 기본 Canvas/uGUI API와 `LegacyRuntime.ttf`를 사용한다. TMP나 UIElements에 직접 의존하지 않는다. 지원 기준은 실제로 테스트하는 Unity 6000.6 이상이다.
 - 제공 씬은 Legacy Input Manager용 StandaloneInputModule을 사용한다. Input System 전용 호스트에서는 EventSystem을 InputSystemUIInputModule로 바꾸고 UI Actions를 연결한다. 씬 생성 도구는 해당 입력 설정에서 Input System 모듈을 선택하며, 프로젝트에 없는 Input System 패키지를 임의로 추가하지 않는다.
 - 기존 Burst 1.8.18은 Unity 6.5의 TreeView API 변경과 충돌했다. manifest를 Unity 6.0 이상을 지원하는 Burst 1.8.30으로 갱신했다. PackageCache 소스는 수정하지 않는다.
 
@@ -200,4 +200,4 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 
 속도에 pass/fail 한도를 걸지 않는다. 비용 모델은 특정 에디터/CPU에서 보정한 정책이며 플레이어/AOT의 최속 보장이 아니다.
 
-알려진 한계: dx/dt=0인 weighted 구간 거부, 증명되지 않는 구간은 분할하므로 구간 수가 표본 검증 때보다 늘 수 있음(무작위 300개 커브에서 +1.6%), 큰 weighted 입력 일부에서 Minimax simplex 반복 한도 초과, JsonUtility의 double 십진 왕복에서 수 ULP 변화 가능. Unity 6.0, URP/HDRP 호스트 및 IL2CPP 실행 검증은 별도 작업이다.
+알려진 한계: dx/dt=0인 weighted 구간 거부, 증명되지 않는 구간은 분할하므로 구간 수가 표본 검증 때보다 늘 수 있음(무작위 300개 커브에서 +1.6%), 큰 weighted 입력 일부에서 Minimax simplex 반복 한도 초과, JsonUtility의 double 십진 왕복에서 수 ULP 변화 가능. 지원 기준은 Unity 6000.6 이상이며, URP/HDRP 호스트 및 IL2CPP 실행 검증은 별도 작업이다.

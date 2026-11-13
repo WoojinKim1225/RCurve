@@ -33,3 +33,16 @@ Contract tests (`ContractTests`, `SegmentCertificateTests`) check the promises i
 - Hint tests cover invalid/stale hints, boundaries and different playback patterns.
 - Some dense benchmark fixtures explicitly use LeastSquares because Minimax can hit its iteration limit. They are not silent objective substitutions.
 - Auto's calibrated cost model is deterministic at bake time; it is not a runtime profiler or universal fastest-path guarantee.
+
+## Player check
+
+Edit Mode tests run Burst inside the editor. To check a built player (Burst compiled ahead of time, curves deserialized from a build), copy `Documentation~/tools/PlayerCheck` into the host's `Assets`, then build and run:
+
+```sh
+/path/to/Unity -batchmode -nographics -projectPath /path/to/host -buildTarget Linux64 \
+  -executeMethod BuildPlayerCheck.Build -logFile /tmp/rcurve-build.log
+/path/to/host/Build/PlayerCheck.x86_64 -batchmode -nographics -rcurveResult /tmp/rcurve-player.txt
+```
+
+The build bakes 16 curves into an asset (all four lookup modes) and a scene that, in the player, evaluates them and 20 curves baked in the player through a Burst job, checks that Burst ran each query and that values and slopes match the managed evaluator, then writes `RESULT PASS` or `RESULT FAIL`. It uses the Mono backend; switch `ScriptingImplementation` in `BuildPlayerCheck` for IL2CPP if that module is installed.
+
