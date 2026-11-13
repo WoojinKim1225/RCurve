@@ -43,7 +43,7 @@ namespace RCurve
 
         private static InvalidOperationException NoKeys() => new InvalidOperationException("The curve has no keys.");
 
-        // A null segment explicitly represents a step, not a missing/failed fit.
+        // A null segment given here is a step, not a missing/failed fit; it is stored as a step segment.
         // Each interval owns [times[i], times[i+1]); exact mapped keys return stored values.
         // Post Loop/Default wraps even the exact final key time to the first key.
         internal BakedRationalCurve(double[] times, double[] values, RationalCurveSegment[] segments,
@@ -69,13 +69,17 @@ namespace RCurve
             }
             if (times.Length > 1)
                 RequireFinite(2 * (times[times.Length - 1] - times[0]));
+            // A null entry is a step (internal callers' shorthand); the public Segments never hold null.
+            var owned = new RationalCurveSegment[segments.Length];
             for (int i = 0; i < segments.Length; i++)
             {
-                RationalCurveSegment segment = segments[i];
-                if (segment != null && (segment.Start != times[i] || segment.End != times[i + 1] ||
+                RationalCurveSegment segment = segments[i] ?? RationalCurveSegment.Step(times[i], times[i + 1], values[i]);
+                // a smooth segment reaches the next key's value; a step only starts at its own (the jump is the next key's)
+                if (segment.Start != times[i] || segment.End != times[i + 1] ||
                     !NearlyEqual(segment.Evaluate(times[i]), values[i]) ||
-                    !NearlyEqual(segment.Evaluate(times[i + 1]), values[i + 1])))
+                    !segment.IsStep && !NearlyEqual(segment.Evaluate(times[i + 1]), values[i + 1]))
                     throw new ArgumentException("Rational segment bounds and endpoint values must match its keys.", nameof(segments));
+                owned[i] = segment;
             }
             if (!indexPrediction.IsValidFor(times))
                 throw new ArgumentException("Index predictor must be monotone with key-index error less than one.", nameof(indexPrediction));
@@ -103,7 +107,7 @@ namespace RCurve
             _indexPrediction = indexPrediction;
             _times = (double[])times.Clone();
             _values = (double[])values.Clone();
-            _segments = (RationalCurveSegment[])segments.Clone();
+            _segments = owned;
             PreWrapMode = preWrapMode;
             PostWrapMode = postWrapMode;
         }
@@ -122,7 +126,7 @@ namespace RCurve
             double mapped = MapTime(time, out _);
             int key = FindKey(mapped, intervalHint, out resolvedInterval);
             if (key >= 0) return _values[key];
-            return _segments[resolvedInterval]?.Evaluate(mapped) ?? _values[resolvedInterval];
+            return _segments[resolvedInterval].Evaluate(mapped);
         }
 
         // The slope of the segment that owns the time, as the value does (each segment owns [start, end); the last
@@ -137,7 +141,7 @@ namespace RCurve
             double mapped = MapTime(time, out int direction);
             if (direction == 0) return 0;
             int key = FindKey(mapped);
-            if (key < 0) return direction * (_segments[~key - 1]?.EvaluateSlope(mapped) ?? 0);
+            if (key < 0) return direction * _segments[~key - 1].EvaluateSlope(mapped);
             return direction * (key < _segments.Length ? KeySlope(key, false) : KeySlope(key - 1, true));
         }
 
@@ -233,8 +237,7 @@ namespace RCurve
         // a segment's slope at its start or end (a step's is 0)
         private double KeySlope(int interval, bool atEnd)
         {
-            RationalCurveSegment segment = _segments[interval];
-            return segment == null ? 0 : segment.EvaluateSlope(_times[atEnd ? interval + 1 : interval]);
+            return _segments[interval].EvaluateSlope(_times[atEnd ? interval + 1 : interval]);
         }
 
         private static bool NearlyEqual(double a, double b)

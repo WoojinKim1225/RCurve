@@ -185,9 +185,11 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 - **기준은 Unity 평가기가 아니다.** weighted가 아닌 구간에서는 RCurve와 `AnimationCurve.Evaluate`가 값 오차 + float 반올림 안에서 일치한다. weighted 구간에서는 Unity의 solver가 자기 Bezier를 벗어날 수 있다. 500개 커브 차등 테스트에서 1개 커브가 0.02 어긋났고, 키 시각에서도 키 값을 돌려주지 않았다. RCurve는 정의를 따른다.
 - **실패는 예외다. 품질이 낮은 커브를 대신 돌려주지 않는다.** `RationalCurveBuilder.Build`와 `RationalCurve.Bake`는 잘못된 입력(유한하지 않은 값, 증가하지 않는 시각, [0,1] 밖 가중치, 잘못된 설정)에 `ArgumentException`(또는 하위 타입)을, 유리함수로 표현할 수 없는 입력(길이 0 핸들 등 dx/ds=0)에 `NotSupportedException`을, `MaxSubdivisionDepth` 안에서 오차 기준을 맞출 수 없거나 solver 반복 한도에 닿으면 `InvalidOperationException`을 던진다. 에디터 자동 bake는 실패를 `BuildError`에 기록하고 마지막 정상 bake를 에셋에 남기지만, 그 뒤 평가는 예외다. bake되지 않은 커브, bake 이후 원본·설정이 바뀐 커브, 더 새 형식으로 bake된 커브도 마찬가지다.
 - **기울기.** `EvaluateSlope(t)`는 값과 같은 구간 소유 규칙으로 `t`를 소유한 구간의 기울기에 wrap 방향(PingPong 반사 구간은 −1, 키 범위 밖 Clamp는 0)을 곱한 값이다. 유한한 시각에서는 NaN이 아니다.
+- **계단도 구간이다.** `Segments`의 원소는 항상 구간이고 null이 아니다. 계단도 다른 구간처럼 `[시작, 끝)`을 소유하며 그 안에서 시작 값을 유지한다(기울기 0). `IsStep`은 끝 시각에서 값이 다음 키 값으로 바뀐다는 뜻이고, 그 시각은 다음 키가 소유한다.
+- **바뀌지 않는 입력 해시.** bake는 만들 때의 원본·설정 해시를 함께 저장하고, 첫 평가 때 현재 해시와 비교한다. 1.x는 기존 입력의 해시를 바꾸지 않으므로 업그레이드가 기존 bake를 낡은 것으로 만들지 않는다. 1.x에서 추가되는 설정은 기본값이 아닐 때만 해시에 들어간다. 테스트에 고정된 해시 값이 이를 지킨다.
 - **버전이 붙은 bake.** bake마다 데이터 형식(`1`)과 bake한 RCurve 버전을 기록한다. 더 오래된 형식은 계속 읽고, 더 새 형식은 잘못 읽는 대신 거부한다.
 - **결정론.** 같은 RCurve 버전·원본·설정이면 계수가 비트 단위로 같다. fitting에 난수와 스레드를 쓰지 않는다. 한 에디터 안에서 테스트했고, OS·CPU·.NET 런타임이 다를 때의 비트 동일성은 검증하지 않았으며 약속하지 않는다.
-- **공개 표면.** `RationalCurve`, `CurveFitSettings`와 그 enum, `RationalCurveBuilder.Build`, `BakedRationalCurve`(평가, 키, 구간, wrap·lookup 진단), `RationalCurveSegment`(평가), `NativeRationalCurve`, lookup enum, `CurveAutoBuild.Queue`/`FlushPending`. 나머지는 internal이다.
+- **공개 표면.** `RationalCurve`, `CurveFitSettings`와 그 enum, `RationalCurveBuilder.Build`, `BakedRationalCurve`(평가, 키, 구간, wrap·lookup 진단), `RationalCurveSegment`(평가, `IsStep`), `NativeRationalCurve`, lookup enum, `CurveAutoBuild.Queue`/`FlushPending`. 나머지는 internal이다.
 
 ## 8. 검증과 알려진 한계
 

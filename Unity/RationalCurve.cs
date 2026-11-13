@@ -57,12 +57,15 @@ namespace RCurve
         // cannot read instead of misreading it.
         internal const int FormatVersion = 1;
         // The RCurve version that bakes, recorded with each bake.
-        internal const string BuilderVersion = "0.6.0";
+        internal const string BuilderVersion = "0.7.0";
 
         public AnimationCurve CopySource() => Copy(_source);
         public CurveFitSettings Settings => _settings;
         public bool HasBake => _hasBake;
         public string BuildError => _buildError;
+        // Never changes for an existing input within 1.x (see ContractTests.InputHashOfAnExistingInputNeverChanges): a
+        // changed hash would make every existing bake look stale. A setting added later is written only when it is
+        // not at its default, so inputs that do not use it hash as before.
         internal string InputHash
         {
             get
@@ -167,7 +170,7 @@ namespace RCurve
             for (int i = 0; i < data.Segments.Length; i++)
             {
                 RationalCurveSegment segment = curve.Segments[i];
-                data.Segments[i] = segment == null ? new SegmentData { Step = true } : new SegmentData
+                data.Segments[i] = segment.IsStep ? new SegmentData { Step = true } : new SegmentData
                 {
                     StartSlope = segment.EvaluateSlope(segment.Start),
                     EndSlope = segment.EvaluateSlope(segment.End),

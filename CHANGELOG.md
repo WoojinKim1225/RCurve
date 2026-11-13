@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0
+
+- **Breaking:** steps are segments. `BakedRationalCurve.Segments` never holds null; a step is a `RationalCurveSegment` with `IsStep`, holding its start value over `[Start, End)` (slope 0). Under the curve's `[start, end)` ownership a step needs no special case: the jump belongs to the next key, which owns `End`. Code that detected steps with `segment == null` must use `IsStep` (it still compiles, so check). Asking a key's in side with `Segments[i - 1].EvaluateSlope(keyTime)` no longer fails after a step. Serialized bakes, the input hash and the Burst evaluator are unchanged.
+- The input hash is part of the contract: 1.x never changes it for an existing input, and a setting added in 1.x enters it only when not at its default. Pinned values in the tests guard it.
+
 ## 0.6.0
 
 - **Breaking:** `EvaluateSlope` no longer returns NaN where the two sides of a time disagree. It returns the slope of the segment that owns the time, as the value does (each segment owns `[start, end)`, the last one also its end), times the wrap direction. At a key that is its out tangent (its in tangent at the last key, 0 on a step); at a wrap seam the first segment's start; at a ping-pong turnaround the owning segment's slope. Before, even a plain curve's first and last keys returned NaN under clamping when their tangents were not 0, and NaN spread silently through whatever used it. Managed and Burst evaluators agree. Unity's `AnimationCurve` has no slope API, so this is RCurve's rule; values already followed Unity's ownership (right-continuous at steps).

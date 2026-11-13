@@ -3,6 +3,8 @@ using System;
 namespace RCurve
 {
     // Source coefficients use Bernstein basis; evaluation uses a positive-denominator Horner form.
+    // A step is a segment too: it owns [Start, End) like any other, so it is simply its start value there (slope 0);
+    // the jump belongs to the next key, which owns End.
     public sealed class RationalCurveSegment
     {
         private readonly double _start;
@@ -17,6 +19,8 @@ namespace RCurve
         private readonly double _startSlope;
         private readonly double _endSlope;
 
+        // Holds its start value over [Start, End); the curve jumps to the next key's value at End.
+        public bool IsStep { get; }
         internal int Degree => _denominator.Length - 1;
         public double Start => _start;
         public double End => _end;
@@ -30,8 +34,9 @@ namespace RCurve
             double startValue, double endValue,
             double startSlope, double endSlope,
             double[] denominatorCoefficients, double[] interiorNumeratorCoefficients,
-            double minimumDenominator = 1e-6)
+            double minimumDenominator = 1e-6, bool isStep = false)
         {
+            IsStep = isStep;
             if (denominatorCoefficients == null)
                 throw new ArgumentNullException(nameof(denominatorCoefficients));
             if (interiorNumeratorCoefficients == null)
@@ -96,9 +101,14 @@ namespace RCurve
             }
         }
 
+        // A step over [start, end): its start value, slope 0.
+        internal static RationalCurveSegment Step(double start, double end, double value) =>
+            new RationalCurveSegment(start, end, value, value, 0, 0, new[] { 1.0, 1, 1, 1 }, Array.Empty<double>(), isStep: true);
+
         public double Evaluate(double time)
         {
             double u = Normalize(time);
+            if (IsStep) return _startValue;
             if (time == _start) return _startValue;
             if (time == _end) return _endValue;
             bool reverse = u > 0.5;
@@ -119,6 +129,7 @@ namespace RCurve
         public double EvaluateSlope(double time)
         {
             double u = Normalize(time);
+            if (IsStep) return 0;
             // Preserve authored endpoint slopes without cancellation in the quotient rule.
             if (time == _start) return _startSlope;
             if (time == _end) return _endSlope;

@@ -169,6 +169,27 @@ public class RationalCurveBoundaryTests
     }
 
     [Test]
+    public void StepsAreSegmentsThatHoldTheirStartValue()
+    {
+        var source = new AnimationCurve(new Keyframe(0, 0, 0, 2), new Keyframe(1, 2, 2, float.PositiveInfinity),
+            new Keyframe(2, 5, float.PositiveInfinity, -1), new Keyframe(3, 4, -1, 0));
+        BakedRationalCurve curve = RationalCurveBuilder.Build(source);
+        foreach (RationalCurveSegment segment in curve.Segments) Assert.That(segment, Is.Not.Null);
+        Assert.That(curve.Segments[0].IsStep, Is.False);
+        RationalCurveSegment step = curve.Segments[1];
+        Assert.That(step.IsStep, Is.True);
+        // over [1, 2): the start value, flat; at 2 the next key (which owns it) takes over
+        Assert.That(step.Evaluate(1), Is.EqualTo(2));
+        Assert.That(step.Evaluate(1.5), Is.EqualTo(2));
+        Assert.That(step.Evaluate(2), Is.EqualTo(2), "The left limit at its end.");
+        Assert.That(step.EvaluateSlope(1.5), Is.EqualTo(0));
+        Assert.That(curve.Evaluate(2), Is.EqualTo(5));
+        // the in side of the key after the step is safe to ask for
+        Assert.That(curve.Segments[1].EvaluateSlope(2), Is.EqualTo(0));
+        Assert.That(curve.Segments[0].EvaluateSlope(1), Is.EqualTo(2).Within(1e-12));
+    }
+
+    [Test]
     public void RejectsMissingFitsInvalidKeysAndNonFiniteQueries()
     {
         var source = AnimationCurve.Linear(0, 0, 1, 1);

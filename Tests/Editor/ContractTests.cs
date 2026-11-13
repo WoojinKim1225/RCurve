@@ -47,6 +47,28 @@ public sealed class ContractTests
         finally { Object.DestroyImmediate(gameObject); }
     }
 
+    // The input hash decides whether a bake still matches its source; 1.x never changes it for an existing input
+    // (a changed hash would make every existing bake look stale). These are pinned values: if this fails, the
+    // change breaks every asset baked before it.
+    [Test]
+    public void InputHashOfAnExistingInputNeverChanges()
+    {
+        string linear = new RationalCurve(AnimationCurve.Linear(0, 0, 1, 1)).InputHash;
+        string weighted = new RationalCurve(new AnimationCurve(
+                new Keyframe(0, 0, 0, 3, 0, 0.15f) { weightedMode = WeightedMode.Out },
+                new Keyframe(1, 1, -0.7f, 0, 0.65f, 0) { weightedMode = WeightedMode.In }),
+            new CurveFitSettings(CurveFitObjective.LeastSquares, CurveFitQuality.Medium, 1e-4, 1e-3, 6, CurveLookupMode.Magic)).InputHash;
+        string step = new RationalCurve(new AnimationCurve(new Keyframe(0, 2, 0, float.PositiveInfinity), new Keyframe(1, 5))
+            { preWrapMode = WrapMode.PingPong, postWrapMode = WrapMode.Loop }).InputHash;
+        Assert.That($"{linear} {weighted} {step}", Is.EqualTo(Pinned));
+    }
+
+    // linear, weighted with non-default settings, step with wrap modes
+    private const string Pinned =
+        "F843A5F81B2DB32CE31D592AA1C595B626346329B825D9C94BE02146D747EBF7 " +
+        "6FE46F73269C6E78241DE3EA9B2BD36C12AD50407D25557C83E9D82F93E2EEA4 " +
+        "988DE569386048B8B5123778DF31369530430E913A28D73E6CE9D1DE215E7972";
+
     [Test]
     public void BakingIsDeterministic()
     {
@@ -66,8 +88,7 @@ public sealed class ContractTests
             for (int i = 0; i < first.SegmentCount; i++)
             {
                 RationalCurveSegment a = first.Segments[i], b = second.Segments[i];
-                Assert.That(b == null, Is.EqualTo(a == null));
-                if (a == null) continue;
+                Assert.That(b.IsStep, Is.EqualTo(a.IsStep));
                 Assert.That(b.NumeratorCoefficients.ToArray(), Is.EqualTo(a.NumeratorCoefficients.ToArray()), $"curve {c} segment {i}");
                 Assert.That(b.DenominatorCoefficients.ToArray(), Is.EqualTo(a.DenominatorCoefficients.ToArray()), $"curve {c} segment {i}");
             }
@@ -161,8 +182,8 @@ public sealed class ContractTests
                 double slope = curve.EvaluateSlope(times[i]);
                 Assert.That(double.IsNaN(slope), Is.False, $"curve {c} key {i}");
                 double owner = i < curve.SegmentCount
-                    ? (curve.Segments[i] == null ? 0 : curve.Segments[i].EvaluateSlope(times[i]))
-                    : (curve.Segments[i - 1] == null ? 0 : curve.Segments[i - 1].EvaluateSlope(times[i]));
+                    ? curve.Segments[i].EvaluateSlope(times[i])
+                    : curve.Segments[i - 1].EvaluateSlope(times[i]);
                 if (!(i == times.Length - 1 && (source.postWrapMode == WrapMode.Loop)))
                     Assert.That(slope, Is.EqualTo(owner), $"curve {c} key {i}: the owning segment's slope");
             }

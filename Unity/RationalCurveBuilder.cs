@@ -24,7 +24,7 @@ namespace RCurve
                 {
                     times.Add(sourceSegment.EndTime);
                     values.Add(sourceSegment.P3.y);
-                    segments.Add(null);
+                    segments.Add(RationalCurveSegment.Step(sourceSegment.StartTime, sourceSegment.EndTime, sourceSegment.P0.y));
                     continue;
                 }
                 if (sourceSegment.HasStationaryX)
@@ -107,8 +107,8 @@ namespace RCurve
                 if (i < segments.Length)
                 {
                     var original = new AnimationCurveBezierSegment(keys[i], keys[i + 1]);
-                    if (original.IsStep != (segments[i] == null))
-                        throw new ArgumentException("Steps need null entries; smooth intervals need a successful fit.", nameof(segments));
+                    if (original.IsStep != (segments[i] == null || segments[i].IsStep))
+                        throw new ArgumentException("Steps need step (or null) entries; smooth intervals need a successful fit.", nameof(segments));
                 }
             }
             return Assemble(times, values, segments,

@@ -43,7 +43,7 @@ namespace RCurve
                 throw new ArgumentOutOfRangeException(nameof(allocator));
             int coefficientCount = 0;
             foreach (RationalCurveSegment segment in source.Segments)
-                if (segment != null) coefficientCount = checked(coefficientCount + 2 * (segment.Degree + 1));
+                if (!segment.IsStep) coefficientCount = checked(coefficientCount + 2 * (segment.Degree + 1));
 
             var result = new NativeRationalCurve();
             try
@@ -69,7 +69,7 @@ namespace RCurve
                 for (int i = 0; i < source.SegmentCount; i++)
                 {
                     RationalCurveSegment segment = source.Segments[i];
-                    if (segment == null)
+                    if (segment.IsStep)
                     {
                         result._segments[i] = new Segment { Kind = SegmentKind.Constant };
                         continue;
