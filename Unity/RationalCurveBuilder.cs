@@ -90,7 +90,7 @@ namespace RCurve
 
         // Assembles already-fitted intervals; only the optional index predictor is fitted here.
         // Null entries are allowed only for source step intervals. The result owns a snapshot.
-        public static BakedRationalCurve FromSegments(AnimationCurve source, RationalCurveSegment[] segments,
+        internal static BakedRationalCurve FromSegments(AnimationCurve source, RationalCurveSegment[] segments,
             CurveLookupMode lookupMode = CurveLookupMode.Auto)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));

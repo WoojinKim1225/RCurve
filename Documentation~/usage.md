@@ -87,7 +87,7 @@ Auto/Magic에서만 인덱스 예측기를 fitting한다. 선형 최소제곱 �
 관리형/Burst 비용 계수는 별도다. LUT는 최대 256개의 int(1,024바이트)로 제한하고, 두 backend 모두 LUT를 선택하지 않으면 저장하지 않는다. 가장 낮게 **추정된** 비용의 후보를 저장한다. 실제 CPU, 컴파일 옵션, 캐시 상태, 순차/랜덤 입력에 대해 항상 최속이라는 보장은 아니다. 교체 실측은 `CurveLookupStrategyTests.StrategiesMatchAndCalibrateAuto`로 반복할 수 있다.
 
 Debug Inspector: `LookupMode`, `ManagedLookup`, `BurstLookup`, `LookupTable`, `LookupScale`, `LookupFallbackReason`.
-코드: `curve.BakedCurve.ManagedLookup`, `.BurstLookup`, `.LookupTable.Length`.
+코드: `curve.BakedCurve.ManagedLookup`, `.BurstLookup`. (lookup 표와 예측식은 0.5.0부터 internal이며 Debug Inspector로 본다.)
 
 ## 4. 값, 기울기, 선택적 힌트
 
@@ -105,7 +105,7 @@ y = curve.Evaluate(time, ref intervalHint);
 - 힌트는 호출자/재생 스트림별 상태다. 커브 내부 공유 캐시는 없다.
 - 순차 접근에서 도움이 되지만 랜덤 접근은 오히려 느려질 수 있다.
 - Job에 넣은 일반 int는 복사된다. 다음 Job에서 재사용하려면 결과 힌트를 호출자 소유 저장소로 전달해야 한다. 여러 writer가 같은 힌트를 공유하지 않는다.
-- scalar 기울기 API는 `EvaluateSlope`다. 기존 `EvaluateDerivative` 호환 별칭은 제거했다. Bézier의 벡터 미분 API `AnimationCurveBezierSegment.EvaluateDerivative`는 별개다. 힌트 오버로드는 Evaluate에 제공한다.
+- scalar 기울기 API는 `EvaluateSlope`다. 기존 `EvaluateDerivative` 호환 별칭은 제거했다. 힌트 오버로드는 Evaluate에 제공한다.
 - Clamp 외부의 slope는 0, PingPong 반사 구간에서는 부호가 반대다. 미분 불가능한 키/반복 이음새는 NaN이다.
 - Unity 6.6 실측에서 Default는 Loop처럼 동작한다. post Loop/Default의 정확한 마지막 시간도 첫 키로 매핑한다.
 
@@ -175,7 +175,16 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 - 제공 씬은 Legacy Input Manager용 StandaloneInputModule을 사용한다. Input System 전용 호스트에서는 EventSystem을 InputSystemUIInputModule로 바꾸고 UI Actions를 연결한다. 씬 생성 도구는 해당 입력 설정에서 Input System 모듈을 선택하며, 프로젝트에 없는 Input System 패키지를 임의로 추가하지 않는다.
 - 기존 Burst 1.8.18은 Unity 6.5의 TreeView API 변경과 충돌했다. manifest를 Unity 6.0 이상을 지원하는 Burst 1.8.30으로 갱신했다. PackageCache 소스는 수정하지 않는다.
 
-## 7. 검증과 알려진 한계
+## 7. 계약 (1.0에서 고정할 약속)
+
+- **오차 기준.** `MaxValueError`는 값 단위의 절대 오차, `MaxSlopeError`는 시간당 값 단위의 절대 오차다. 둘 다 bake된 각 구간 안의 모든 시각에서, 키가 정의하는 정확한 커브(weighted Bezier, double 정밀도)를 기준으로 성립하며 표본이 아니라 구간마다 증명된다. 키 값과 유한한 키 접선은 그대로 재현한다. 키 범위 밖 시각은 WrapMode로 먼저 매핑한다.
+- **기준은 Unity 평가기가 아니다.** weighted가 아닌 구간에서는 RCurve와 `AnimationCurve.Evaluate`가 값 오차 + float 반올림 안에서 일치한다. weighted 구간에서는 Unity의 solver가 자기 Bezier를 벗어날 수 있다. 500개 커브 차등 테스트에서 1개 커브가 0.02 어긋났고, 키 시각에서도 키 값을 돌려주지 않았다. RCurve는 정의를 따른다.
+- **실패는 예외다. 품질이 낮은 커브를 대신 돌려주지 않는다.** `RationalCurveBuilder.Build`와 `RationalCurve.Bake`는 잘못된 입력(유한하지 않은 값, 증가하지 않는 시각, [0,1] 밖 가중치, 잘못된 설정)에 `ArgumentException`(또는 하위 타입)을, 유리함수로 표현할 수 없는 입력(길이 0 핸들 등 dx/ds=0)에 `NotSupportedException`을, `MaxSubdivisionDepth` 안에서 오차 기준을 맞출 수 없거나 solver 반복 한도에 닿으면 `InvalidOperationException`을 던진다. 에디터 자동 bake는 실패를 `BuildError`에 기록하고 마지막 정상 bake를 에셋에 남기지만, 그 뒤 평가는 예외다. bake되지 않은 커브, bake 이후 원본·설정이 바뀐 커브, 더 새 형식으로 bake된 커브도 마찬가지다.
+- **버전이 붙은 bake.** bake마다 데이터 형식(`1`)과 bake한 RCurve 버전을 기록한다. 더 오래된 형식은 계속 읽고, 더 새 형식은 잘못 읽는 대신 거부한다.
+- **결정론.** 같은 RCurve 버전·원본·설정이면 계수가 비트 단위로 같다. fitting에 난수와 스레드를 쓰지 않는다. 한 에디터 안에서 테스트했고, OS·CPU·.NET 런타임이 다를 때의 비트 동일성은 검증하지 않았으며 약속하지 않는다.
+- **공개 표면.** `RationalCurve`, `CurveFitSettings`와 그 enum, `RationalCurveBuilder.Build`, `BakedRationalCurve`(평가, 키, 구간, wrap·lookup 진단), `RationalCurveSegment`(평가), `NativeRationalCurve`, lookup enum, `CurveAutoBuild.Queue`/`FlushPending`. 나머지는 internal이다.
+
+## 8. 검증과 알려진 한계
 
 - `CurveLookupStrategyTests`: 같은 bake의 BinarySearch / BruteForce / LUT / Magic / Auto 비교, 실제 Burst 값/기울기 실행, 정확한 키/인접 double/랜덤 입력, 저장 복원, LUT 안전성.
 - `RationalCurveBenchmarkTests`: Unity / rational / Burst 랜덤 접근 비교.

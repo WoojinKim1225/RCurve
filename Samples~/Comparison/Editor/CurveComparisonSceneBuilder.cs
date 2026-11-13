@@ -69,7 +69,7 @@ namespace RCurve.Demo.Editor
                 Key(0.7f, -0.5f, -1, 1.2f, 0.6f, 0.3f), Key(1, 0, 1, 1, 0.3f, 0.35f))
                 { preWrapMode = WrapMode.Loop, postWrapMode = WrapMode.Loop };
             demo.Curve = new RationalCurve(source);
-            demo.Curve.StoreBuild(RationalCurveBuilder.Build(source, demo.Curve.Settings), demo.Curve.InputHash);
+            demo.Curve.Bake();
             ComparisonCanvasBuilder.Build(demo);
             if (!EditorSceneManager.SaveScene(scene, ScenePath)) throw new IOException("Could not save comparison scene.");
             AssetDatabase.SaveAssets();

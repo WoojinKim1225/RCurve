@@ -35,6 +35,10 @@ namespace RCurve
             public int[] LookupTable;
             public double LookupScale;
             public string LookupFallbackReason;
+            // the layout of this data (FormatVersion; 0: written before the field existed, the same layout as 1)
+            // and the RCurve version that baked it
+            public int Format;
+            public string Builder;
         }
 
         [SerializeField] private AnimationCurve _source = AnimationCurve.Linear(0, 0, 1, 1);
@@ -49,11 +53,17 @@ namespace RCurve
 
         // A copy of the source curve: the source changes only through serialization (the Inspector, the asset's
         // file), so a baked curve cannot be edited from code into a curve its bake no longer matches.
+        // The baked data's layout. A newer RCurve that changes it raises this, and an older one refuses data it
+        // cannot read instead of misreading it.
+        internal const int FormatVersion = 1;
+        // The RCurve version that bakes, recorded with each bake.
+        internal const string BuilderVersion = "0.5.0";
+
         public AnimationCurve CopySource() => Copy(_source);
         public CurveFitSettings Settings => _settings;
         public bool HasBake => _hasBake;
         public string BuildError => _buildError;
-        public string InputHash
+        internal string InputHash
         {
             get
             {
@@ -78,7 +88,7 @@ namespace RCurve
                 return BitConverter.ToString(hash.ComputeHash(stream.ToArray())).Replace("-", "");
             }
         }
-        public bool NeedsBuild => InputHash != _attemptedInput;
+        internal bool NeedsBuild => InputHash != _attemptedInput;
         public bool IsStale => !_hasBake || InputHash != _builtInput;
 
         public BakedRationalCurve BakedCurve
@@ -86,6 +96,9 @@ namespace RCurve
             get
             {
                 if (!_hasBake) throw new InvalidOperationException("The curve has not been baked.");
+                if (_baked.Format > FormatVersion)
+                    throw new InvalidOperationException($"The curve was baked in format {_baked.Format} by RCurve {_baked.Builder}; " +
+                                                        $"this RCurve reads format {FormatVersion} or older. Update RCurve or rebake the curve.");
                 if (_cached != null) return _cached;
                 // Checked once per load, before the first evaluation: a source or settings changed since the bake
                 // (by code without Undo, a text edit, a merge) is not evaluated with the old bake.
@@ -134,12 +147,13 @@ namespace RCurve
         }
 
         // Called by editor tooling; publish only complete results for the still-current input.
-        public bool StoreBuild(BakedRationalCurve curve, string inputHash)
+        internal bool StoreBuild(BakedRationalCurve curve, string inputHash)
         {
             if (curve == null) throw new ArgumentNullException(nameof(curve));
             if (inputHash != InputHash) return false;
             var data = new BakedData
             {
+                Format = FormatVersion, Builder = BuilderVersion,
                 Times = curve.KeyTimes.ToArray(), Values = curve.KeyValues.ToArray(),
                 Segments = new SegmentData[curve.SegmentCount], Pre = curve.PreWrapMode, Post = curve.PostWrapMode,
                 IndexPrediction = curve.IndexPrediction, HasLookupPlan = true,
@@ -169,7 +183,7 @@ namespace RCurve
             return true;
         }
 
-        public void StoreBuildFailure(string inputHash, string message)
+        internal void StoreBuildFailure(string inputHash, string message)
         {
             if (inputHash != InputHash) return;
             _attemptedInput = inputHash;

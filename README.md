@@ -94,6 +94,17 @@ Run **Tools → RCurve → Check Web Demo** after importing to check baking, end
 
 Sample scripts and their UI dependency are separate from the core runtime assemblies. The comparison sample uses Built-in unlit materials; URP/HDRP hosts may need replacement materials. Its supplied EventSystem uses the Legacy Input Manager; configure InputSystemUIInputModule/UI Actions in Input System-only hosts.
 
+## Contract
+
+What 1.0 will keep, stated now so it can be checked:
+
+- **Error bounds.** `MaxValueError` is absolute, in the curve's value units; `MaxSlopeError` is absolute, in value per time unit. Both hold for every time inside every baked segment, measured against the exact curve the keys define (the weighted Bezier, in double precision), and are proven per segment, not sampled. Key values and finite key tangents are reproduced exactly. Times outside the keys are mapped by the wrap modes first.
+- **Unity's evaluator is not the reference.** On unweighted segments RCurve and `AnimationCurve.Evaluate` agree to the value bound plus float rounding. On weighted segments Unity's own solver can miss its Bezier: in a 500-curve differential test it was off by 0.02 on one curve, not even returning the key's value at the key's time. RCurve follows the definition.
+- **Failures throw; nothing returns a lower-quality curve.** `RationalCurveBuilder.Build` and `RationalCurve.Bake` throw `ArgumentException` (or a subclass) for invalid input (non-finite values, times not increasing, weights outside [0,1], invalid settings), `NotSupportedException` for valid input the rational form cannot represent (a zero-length handle or other stationary X), and `InvalidOperationException` when the bounds cannot be met within `MaxSubdivisionDepth` or a solver reaches its iteration limit. The editor's auto-bake records the failure (`BuildError`) and keeps the last good bake in the asset, but evaluation then throws, as it does for an unbaked curve, a curve whose source or settings changed since its bake, or a bake in a newer format.
+- **Versioned bakes.** Each bake records its data format (`1`) and the RCurve version that made it. An RCurve that reads an older format keeps doing so; one that meets a newer format refuses it rather than misreading it.
+- **Determinism.** The same RCurve version, source and settings give bit-identical coefficients: the fit uses no randomness and no threads. This is tested within one editor; bit-identity across operating systems, CPUs or .NET runtimes is not verified and not promised.
+- **Public surface.** `RationalCurve`, `CurveFitSettings` and its enums, `RationalCurveBuilder.Build`, `BakedRationalCurve` (evaluation, keys, segments, wrap and lookup diagnostics), `RationalCurveSegment` (evaluation), `NativeRationalCurve`, the lookup enums and `CurveAutoBuild.Queue`/`FlushPending`. Everything else is internal.
+
 ## Compatibility and limits
 
 - API baseline: **Unity 6000.0+**. Unexecuted editor versions are not certified; see [compatibility notes](Documentation~/compatibility.md).

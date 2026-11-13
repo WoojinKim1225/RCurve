@@ -4,7 +4,7 @@ namespace RCurve
 {
     // Deterministic bake-time policy. Uniform mapped-time workload, no per-bake benchmarking.
     // Costs are relative lookup units calibrated by CurveLookupStrategyTests, not promised nanoseconds.
-    public static class CurveLookupPlanner
+    internal static class CurveLookupPlanner
     {
         public const int MaximumLutBytes = 1024;
         private const int WorkloadSampleCount = 256;

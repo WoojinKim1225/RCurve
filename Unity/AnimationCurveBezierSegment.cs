@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RCurve
 {
     // Parametric source for fitting in both Editor and player. Control points use normalized X and unchanged Y.
-    public sealed class AnimationCurveBezierSegment
+    internal sealed class AnimationCurveBezierSegment
     {
         public double StartTime { get; }
         public double EndTime { get; }

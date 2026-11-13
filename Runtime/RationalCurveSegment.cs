@@ -17,15 +17,15 @@ namespace RCurve
         private readonly double _startSlope;
         private readonly double _endSlope;
 
-        public int Degree => _denominator.Length - 1;
+        internal int Degree => _denominator.Length - 1;
         public double Start => _start;
         public double End => _end;
-        public ReadOnlySpan<double> NumeratorCoefficients => _numerator;
-        public ReadOnlySpan<double> DenominatorCoefficients => _denominator;
+        internal ReadOnlySpan<double> NumeratorCoefficients => _numerator;
+        internal ReadOnlySpan<double> DenominatorCoefficients => _denominator;
 
         // denominatorCoefficients includes q0 = 1; interior coefficients are p2 ... p(n-2).
         // Endpoint value/slope constraints determine p0, p1, p(n-1), pn for every degree.
-        public RationalCurveSegment(
+        internal RationalCurveSegment(
             double start, double end,
             double startValue, double endValue,
             double startSlope, double endSlope,

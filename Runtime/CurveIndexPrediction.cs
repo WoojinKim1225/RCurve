@@ -4,7 +4,7 @@ namespace RCurve
 {
     // A single global polynomial, not a lookup table. Default preserves legacy binary search.
     [Serializable]
-    public struct CurveIndexPrediction
+    internal struct CurveIndexPrediction
     {
         public double Cubic;
         public double Quadratic;

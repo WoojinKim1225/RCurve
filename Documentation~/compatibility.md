@@ -40,7 +40,7 @@ The comparison sample uses Canvas/uGUI and LegacyRuntime.ttf, not UI Toolkit. Co
 
 Version 0.3.0 removes the `SerializableRationalCurve` → `RationalCurve` `MovedFrom` migration. Existing file GUIDs and serialized field names are unchanged, but automatic migration from the old type is no longer supported. Back up older assets before upgrading.
 
-The scalar `EvaluateDerivative` aliases have also been removed; use `EvaluateSlope` on `RationalCurve`, `BakedRationalCurve`, `RationalCurveSegment` and `NativeRationalCurve`. Segment evaluation parameters are now named `time` rather than `x`; update named arguments. `AnimationCurveBezierSegment.EvaluateDerivative` remains a vector-valued parametric derivative, not a scalar slope.
+The scalar `EvaluateDerivative` aliases have also been removed; use `EvaluateSlope` on `RationalCurve`, `BakedRationalCurve`, `RationalCurveSegment` and `NativeRationalCurve`. Segment evaluation parameters are now named `time` rather than `x`; update named arguments. (`AnimationCurveBezierSegment` is internal from 0.5.0.)
 
 Input signatures use versioned semantic binary values and SHA-256 rather than Unity's changing AnimationCurve JSON representation. Older bakes may be marked stale after upgrading and should be rebaked in the Editor. Runtime never repairs or fits stale data automatically; callers may explicitly replace it with `Bake()`.
 

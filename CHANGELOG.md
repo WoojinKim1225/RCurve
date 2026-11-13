@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+Prepares the 1.0 contract (see README, Contract); no new fitting or evaluation features.
+
+- **Breaking:** internal now (implementation, not API): `AnimationCurveBezierSegment`, `CurveLookupPlanner`, `CurveIndexPrediction`, `RationalCurveBuilder.FromSegments`, the `BakedRationalCurve` constructor and its `IndexPrediction`, `LookupTable` and `LookupScale`, the `RationalCurveSegment` constructor and its `Degree` and coefficient spans, `RationalCurve.StoreBuild`, `StoreBuildFailure`, `InputHash` and `NeedsBuild`, and `RationalCurveDrawer`. Build curves with `RationalCurveBuilder.Build` or `RationalCurve.Bake`.
+- Each bake records its data format (1) and the RCurve version that made it; a bake in a newer format is refused instead of misread. Bakes written before this field read as format 0, the same layout, and keep working.
+- Documented the error bounds' units and reference, the failure modes, determinism and the public surface.
+- Added contract tests: format versioning, bit-identical rebakes, a 500-curve differential test against the exact source (asserted) and Unity's `AnimationCurve.Evaluate` (asserted on unweighted segments), and edge cases (single key, no keys, zero and full-length handles, out-of-range weights, steps, repeated and reversed key times).
+
 ## 0.4.2
 
 - Each baked segment's value and slope errors are now proven over the whole interval instead of checked on a 129-point grid. In the Bezier parameter the source is polynomial, so each bound becomes the nonnegativity of a polynomial, tested by its Bernstein coefficients with de Casteljau refinement; a segment that cannot be proven is subdivided as before. On 300 random curves at default settings, the grid had passed 12 curves whose slope error exceeded the limit (up to 3.3x); they are now subdivided (+1.6% segments overall, value errors unchanged).

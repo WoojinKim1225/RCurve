@@ -24,12 +24,12 @@ namespace RCurve
         public CurveWrapMode PreWrapMode { get; }
         public CurveWrapMode PostWrapMode { get; }
         public int SegmentCount => _segments.Length;
-        public CurveIndexPrediction IndexPrediction => _indexPrediction;
+        internal CurveIndexPrediction IndexPrediction => _indexPrediction;
         public CurveLookupMode LookupMode { get; }
         public CurveLookupStrategy ManagedLookup { get; }
         public CurveLookupStrategy BurstLookup { get; }
-        public double LookupScale { get; }
-        public ReadOnlySpan<int> LookupTable => _lookupTable;
+        internal double LookupScale { get; }
+        internal ReadOnlySpan<int> LookupTable => _lookupTable;
         public ReadOnlySpan<double> KeyTimes => _times;
         public ReadOnlySpan<double> KeyValues => _values;
         public ReadOnlySpan<RationalCurveSegment> Segments => _segments;
@@ -46,7 +46,7 @@ namespace RCurve
         // A null segment explicitly represents a step, not a missing/failed fit.
         // Each interval owns [times[i], times[i+1]); exact mapped keys return stored values.
         // Post Loop/Default wraps even the exact final key time to the first key.
-        public BakedRationalCurve(double[] times, double[] values, RationalCurveSegment[] segments,
+        internal BakedRationalCurve(double[] times, double[] values, RationalCurveSegment[] segments,
             CurveWrapMode preWrapMode = CurveWrapMode.ClampForever,
             CurveWrapMode postWrapMode = CurveWrapMode.ClampForever,
             CurveIndexPrediction indexPrediction = default, CurveLookupMode lookupMode = CurveLookupMode.Auto,

@@ -8,7 +8,7 @@ using Object = UnityEngine.Object;
 namespace RCurve.Editor
 {
     [CustomPropertyDrawer(typeof(RationalCurve))]
-    public sealed class RationalCurveDrawer : PropertyDrawer
+    internal sealed class RationalCurveDrawer : PropertyDrawer
     {
         private const float ErrorHeight = 56;
 
