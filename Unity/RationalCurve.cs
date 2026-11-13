@@ -57,7 +57,7 @@ namespace RCurve
         // cannot read instead of misreading it.
         internal const int FormatVersion = 1;
         // The RCurve version that bakes, recorded with each bake.
-        internal const string BuilderVersion = "0.5.4";
+        internal const string BuilderVersion = "0.6.0";
 
         public AnimationCurve CopySource() => Copy(_source);
         public CurveFitSettings Settings => _settings;

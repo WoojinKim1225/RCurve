@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+- **Breaking:** `EvaluateSlope` no longer returns NaN where the two sides of a time disagree. It returns the slope of the segment that owns the time, as the value does (each segment owns `[start, end)`, the last one also its end), times the wrap direction. At a key that is its out tangent (its in tangent at the last key, 0 on a step); at a wrap seam the first segment's start; at a ping-pong turnaround the owning segment's slope. Before, even a plain curve's first and last keys returned NaN under clamping when their tangents were not 0, and NaN spread silently through whatever used it. Managed and Burst evaluators agree. Unity's `AnimationCurve` has no slope API, so this is RCurve's rule; values already followed Unity's ownership (right-continuous at steps).
+
 ## 0.5.4
 
 - **Supported editors are now Unity 6000.6+** (`package.json` declared 6000.0, which was never run). Earlier Unity 6 editors may work but are not supported.

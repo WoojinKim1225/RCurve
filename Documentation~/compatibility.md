@@ -12,6 +12,7 @@ The supported baseline is **Unity 6000.6 (Unity 6.6)**, the line the package is 
 
 | Version / host | Installation | Results |
 |---|---|---|
+| 0.6.0 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); Curve Comparison copied into Assets; Linux x64 Mono player | **310/310 Edit Mode passed; player check passed again (Burst AOT, values and slopes bit-identical to managed)** |
 | 0.5.4 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); Linux x64 **Mono player** built from the host | **Player check passed: Burst AOT ran every query; 16 editor-baked (deserialized) and 20 player-baked curves across all four lookup strategies, about 11,000 queries, values and slopes bit-identical to the managed evaluator** |
 | 0.5.3 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); Curve Comparison copied into Assets | **309/309 Edit Mode passed** |
 | 0.5.2 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); Curve Comparison copied into Assets | **308/308 Edit Mode passed** |

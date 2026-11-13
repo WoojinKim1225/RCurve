@@ -125,8 +125,11 @@ namespace RCurve
             return _segments[resolvedInterval]?.Evaluate(mapped) ?? _values[resolvedInterval];
         }
 
-        // NaN means no two-sided derivative: a step, corner, wrap seam or reflection cusp.
-        // At smooth reflected portions the sign reverses; strictly clamped regions return zero.
+        // The slope of the segment that owns the time, as the value does (each segment owns [start, end); the last
+        // one also its end), times the wrap direction (-1 on a ping-pong's reflected pass, 0 where clamped outside the
+        // keys). At a key this is its out tangent (its in tangent at the last key; a step's flat 0); at a wrap seam,
+        // the first segment's start. Never NaN for a finite time. The other side of a key is the previous segment's
+        // EvaluateSlope at the key's time.
         public double EvaluateSlope(double time)
         {
             RequireFinite(time);
@@ -134,28 +137,8 @@ namespace RCurve
             double mapped = MapTime(time, out int direction);
             if (direction == 0) return 0;
             int key = FindKey(mapped);
-            if (key < 0)
-                return direction * (_segments[~key - 1]?.EvaluateSlope(mapped) ?? 0);
-            if (key > 0 && key < _times.Length - 1)
-                return direction * JoinDerivative(_values[key], Limit(key - 1, true), Limit(key, false));
-
-            bool outside = time < _times[0] || time > _times[_times.Length - 1] ||
-                (time == _times[_times.Length - 1] && IsLoop(PostWrapMode));
-            CurveWrapMode mode = time < _times[0] ? PreWrapMode : PostWrapMode;
-            if (!outside) mode = key == 0 ? PreWrapMode : PostWrapMode;
-            var first = Limit(0, false);
-            var last = Limit(_segments.Length - 1, true);
-            if (outside && IsLoop(mode))
-                return JoinDerivative(_values[key], last, first);
-            if (key == 0)
-            {
-                var left = IsLoop(mode) ? last :
-                    mode == CurveWrapMode.PingPong ? (first.value, -first.slope) : (_values[0], 0.0);
-                return JoinDerivative(_values[0], left, first);
-            }
-            var right = IsLoop(mode) ? first :
-                mode == CurveWrapMode.PingPong ? (last.value, -last.slope) : (_values[key], 0.0);
-            return JoinDerivative(_values[key], last, right);
+            if (key < 0) return direction * (_segments[~key - 1]?.EvaluateSlope(mapped) ?? 0);
+            return direction * (key < _segments.Length ? KeySlope(key, false) : KeySlope(key - 1, true));
         }
 
         private int FindKey(double time) => FindKey(time, -1, out _);
@@ -247,19 +230,11 @@ namespace RCurve
             return Math.Max(first, Math.Min(last, first + phase));
         }
 
-        private (double value, double slope) Limit(int interval, bool atEnd)
+        // a segment's slope at its start or end (a step's is 0)
+        private double KeySlope(int interval, bool atEnd)
         {
-            int key = atEnd ? interval + 1 : interval;
             RationalCurveSegment segment = _segments[interval];
-            return segment == null ? (_values[interval], 0) :
-                (_values[key], segment.EvaluateSlope(_times[key]));
-        }
-
-        private static double JoinDerivative(double value, (double value, double slope) left,
-            (double value, double slope) right)
-        {
-            return left.value == value && right.value == value && NearlyEqual(left.slope, right.slope)
-                ? 0.5 * left.slope + 0.5 * right.slope : double.NaN;
+            return segment == null ? 0 : segment.EvaluateSlope(_times[atEnd ? interval + 1 : interval]);
         }
 
         private static bool NearlyEqual(double a, double b)

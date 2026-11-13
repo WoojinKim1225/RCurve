@@ -6,7 +6,7 @@
 
 **애니메이션 키의 값과 양쪽 유한 접선 기울기는 경계 조건으로 보존하고, 키 사이만 근사한다.** 좌우 접선이 다른 키는 `inTangent`와 `outTangent`를 각각 보존한다. 키 사이의 높이/기울기는 지정한 허용 오차 안에 있음을 구간마다 증명한다(7절). Unity의 `AnimationCurve.Evaluate`와 비트 단위로 같은 값을 내는 변환은 아니다.
 
-계단은 별도 규칙으로 처리한다. 좌우 기울기/값이 이어지지 않는 키에는 하나의 공통 미분값이 없으므로 `EvaluateSlope`는 NaN을 반환할 수 있다. 범위 밖 시간과 Loop의 마지막 시각은 원본 WrapMode로 먼저 매핑한다.
+계단은 별도 규칙으로 처리한다. 값과 기울기 모두 각 구간이 `[시작, 끝)`을 소유하는 규칙을 따른다(마지막 구간은 끝도 소유). 그래서 키 시각의 값은 오른쪽 구간 쪽(Unity와 같음)이고, `EvaluateSlope`는 그 키의 out 접선(마지막 키는 in 접선, 계단은 0)이다. 유한한 시각에서 NaN을 돌려주지 않는다. 키의 반대쪽 기울기는 `Segments[i - 1].EvaluateSlope(키 시각)`으로 얻는다. 범위 밖 시간과 Loop의 마지막 시각은 원본 WrapMode로 먼저 매핑한다.
 
 - 사용자 필드: `RationalCurve` (`RCurve.Unity`)
 - 불변 관리형 결과: `BakedRationalCurve` (`RCurve.Runtime`, UnityEngine 참조 없음)
@@ -110,7 +110,7 @@ y = curve.Evaluate(time, ref intervalHint);
 - 순차 접근에서 도움이 되지만 랜덤 접근은 오히려 느려질 수 있다.
 - Job에 넣은 일반 int는 복사된다. 다음 Job에서 재사용하려면 결과 힌트를 호출자 소유 저장소로 전달해야 한다. 여러 writer가 같은 힌트를 공유하지 않는다.
 - scalar 기울기 API는 `EvaluateSlope`다. 기존 `EvaluateDerivative` 호환 별칭은 제거했다. 힌트 오버로드는 Evaluate에 제공한다.
-- Clamp 외부의 slope는 0, PingPong 반사 구간에서는 부호가 반대다. 미분 불가능한 키/반복 이음새는 NaN이다.
+- Clamp 외부의 slope는 0, PingPong 반사 구간에서는 부호가 반대다. 키·반복 이음새·PingPong 반환점은 그 시각을 소유한 구간의 기울기다(이음새는 첫 구간의 시작). Unity `AnimationCurve`에는 기울기 API가 없으므로 이 규칙은 RCurve가 정한 것이다.
 - Unity 6.6 실측에서 Default는 Loop처럼 동작한다. post Loop/Default의 정확한 마지막 시간도 첫 키로 매핑한다.
 
 ## 5. 코드에서 bake / Burst 스냅샷
@@ -184,6 +184,7 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 - **오차 기준.** `MaxValueError`는 값 단위의 절대 오차, `MaxSlopeError`는 시간당 값 단위의 절대 오차다. 둘 다 bake된 각 구간 안의 모든 시각에서, 키가 정의하는 정확한 커브(weighted Bezier, double 정밀도)를 기준으로 성립하며 표본이 아니라 구간마다 증명된다. 키 값과 유한한 키 접선은 그대로 재현한다. 키 범위 밖 시각은 WrapMode로 먼저 매핑한다.
 - **기준은 Unity 평가기가 아니다.** weighted가 아닌 구간에서는 RCurve와 `AnimationCurve.Evaluate`가 값 오차 + float 반올림 안에서 일치한다. weighted 구간에서는 Unity의 solver가 자기 Bezier를 벗어날 수 있다. 500개 커브 차등 테스트에서 1개 커브가 0.02 어긋났고, 키 시각에서도 키 값을 돌려주지 않았다. RCurve는 정의를 따른다.
 - **실패는 예외다. 품질이 낮은 커브를 대신 돌려주지 않는다.** `RationalCurveBuilder.Build`와 `RationalCurve.Bake`는 잘못된 입력(유한하지 않은 값, 증가하지 않는 시각, [0,1] 밖 가중치, 잘못된 설정)에 `ArgumentException`(또는 하위 타입)을, 유리함수로 표현할 수 없는 입력(길이 0 핸들 등 dx/ds=0)에 `NotSupportedException`을, `MaxSubdivisionDepth` 안에서 오차 기준을 맞출 수 없거나 solver 반복 한도에 닿으면 `InvalidOperationException`을 던진다. 에디터 자동 bake는 실패를 `BuildError`에 기록하고 마지막 정상 bake를 에셋에 남기지만, 그 뒤 평가는 예외다. bake되지 않은 커브, bake 이후 원본·설정이 바뀐 커브, 더 새 형식으로 bake된 커브도 마찬가지다.
+- **기울기.** `EvaluateSlope(t)`는 값과 같은 구간 소유 규칙으로 `t`를 소유한 구간의 기울기에 wrap 방향(PingPong 반사 구간은 −1, 키 범위 밖 Clamp는 0)을 곱한 값이다. 유한한 시각에서는 NaN이 아니다.
 - **버전이 붙은 bake.** bake마다 데이터 형식(`1`)과 bake한 RCurve 버전을 기록한다. 더 오래된 형식은 계속 읽고, 더 새 형식은 잘못 읽는 대신 거부한다.
 - **결정론.** 같은 RCurve 버전·원본·설정이면 계수가 비트 단위로 같다. fitting에 난수와 스레드를 쓰지 않는다. 한 에디터 안에서 테스트했고, OS·CPU·.NET 런타임이 다를 때의 비트 동일성은 검증하지 않았으며 약속하지 않는다.
 - **공개 표면.** `RationalCurve`, `CurveFitSettings`와 그 enum, `RationalCurveBuilder.Build`, `BakedRationalCurve`(평가, 키, 구간, wrap·lookup 진단), `RationalCurveSegment`(평가), `NativeRationalCurve`, lookup enum, `CurveAutoBuild.Queue`/`FlushPending`. 나머지는 internal이다.

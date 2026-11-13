@@ -1,6 +1,6 @@
 {
   "name": "com.woojinkim1225.rcurve",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "displayName": "RCurve",
   "description": "Rational AnimationCurve baking with key/tangent constraints, Burst evaluation, adaptive lookup, and optional interval hints.",
   "unity": "6000.6",

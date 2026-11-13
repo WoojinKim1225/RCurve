@@ -140,6 +140,37 @@ public sealed class ContractTests
         Assert.That(baked, Is.GreaterThan(450));
     }
 
+    // EvaluateSlope never returns NaN for a finite time: at every key, wrap seam and turnaround of random curves (with
+    // corners and steps) it is the owning segment's slope times the wrap direction.
+    [Test]
+    public void SlopeIsNeverNaNForAFiniteTime()
+    {
+        var random = new System.Random(31);
+        for (int c = 0; c < 200; c++)
+        {
+            AnimationCurve source = RandomCurve(random, allowSteps: true);
+            source.preWrapMode = (WrapMode)new[] { WrapMode.Loop, WrapMode.PingPong, WrapMode.ClampForever }[random.Next(3)];
+            source.postWrapMode = (WrapMode)new[] { WrapMode.Loop, WrapMode.PingPong, WrapMode.ClampForever }[random.Next(3)];
+            BakedRationalCurve curve;
+            try { curve = RationalCurveBuilder.Build(source); }
+            catch (InvalidOperationException) { continue; }
+            double[] times = curve.KeyTimes.ToArray();
+            double first = times[0], span = times[times.Length - 1] - first;
+            for (int i = 0; i < times.Length; i++)
+            {
+                double slope = curve.EvaluateSlope(times[i]);
+                Assert.That(double.IsNaN(slope), Is.False, $"curve {c} key {i}");
+                double owner = i < curve.SegmentCount
+                    ? (curve.Segments[i] == null ? 0 : curve.Segments[i].EvaluateSlope(times[i]))
+                    : (curve.Segments[i - 1] == null ? 0 : curve.Segments[i - 1].EvaluateSlope(times[i]));
+                if (!(i == times.Length - 1 && (source.postWrapMode == WrapMode.Loop)))
+                    Assert.That(slope, Is.EqualTo(owner), $"curve {c} key {i}: the owning segment's slope");
+            }
+            for (int k = -3; k <= 3; k++)
+                Assert.That(double.IsNaN(curve.EvaluateSlope(first + k * span)), Is.False, $"curve {c} at {k} spans");
+        }
+    }
+
     // Magic's one-step correction is proven at bake time, so the managed lookup's miss path (which throws) is never
     // reached: query every key, its neighbouring doubles, interval midpoints, random times and wrapped times, and
     // compare with the same curve baked for brute-force lookup.

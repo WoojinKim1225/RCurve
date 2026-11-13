@@ -136,6 +136,8 @@ namespace RCurve
         }
 
         // Matches BakedRationalCurve: NaN at non-differentiable joins, reversed slope when mirrored.
+        // As BakedRationalCurve.EvaluateSlope: the owning segment's slope times the wrap direction; never NaN for a
+        // finite time (NaN for a non-finite time or an uncreated curve, which the managed evaluator throws for).
         public double EvaluateSlope(double time)
         {
             if (!IsCreated || !IsFinite(time)) return double.NaN;
@@ -145,25 +147,7 @@ namespace RCurve
             if (direction == 0) return 0;
             int key = FindKey(mapped);
             if (key < 0) return direction * SegmentSlope(~key - 1, mapped);
-            if (key > 0 && key < _times.Length - 1)
-                return direction * JoinDerivative(_values[key], Limit(key - 1, true), Limit(key, false));
-
-            bool outside = time < _times[0] || time > _times[_times.Length - 1] ||
-                (time == _times[_times.Length - 1] && IsLoop(_postWrapMode));
-            CurveWrapMode mode = time < _times[0] ? _preWrapMode : _postWrapMode;
-            if (!outside) mode = key == 0 ? _preWrapMode : _postWrapMode;
-            var first = Limit(0, false);
-            var last = Limit(_segments.Length - 1, true);
-            if (outside && IsLoop(mode)) return JoinDerivative(_values[key], last, first);
-            if (key == 0)
-            {
-                var left = IsLoop(mode) ? last : mode == CurveWrapMode.PingPong
-                    ? (first.value, -first.slope) : (_values[0], 0.0);
-                return JoinDerivative(_values[0], left, first);
-            }
-            var right = IsLoop(mode) ? first : mode == CurveWrapMode.PingPong
-                ? (last.value, -last.slope) : (_values[key], 0.0);
-            return JoinDerivative(_values[key], last, right);
+            return direction * (key < _segments.Length ? SegmentSlope(key, _times[key]) : SegmentSlope(key - 1, _times[key]));
         }
 
         public void Dispose()
@@ -292,25 +276,6 @@ namespace RCurve
                 direction = -1;
             }
             return Math.Max(first, Math.Min(last, first + phase));
-        }
-
-        private (double value, double slope) Limit(int interval, bool atEnd)
-        {
-            int key = atEnd ? interval + 1 : interval;
-            return _segments[interval].Kind == SegmentKind.Constant ? (_values[interval], 0) :
-                (_values[key], SegmentSlope(interval, _times[key]));
-        }
-
-        private static double JoinDerivative(double value, (double value, double slope) left,
-            (double value, double slope) right)
-        {
-            return left.value == value && right.value == value && NearlyEqual(left.slope, right.slope)
-                ? 0.5 * left.slope + 0.5 * right.slope : double.NaN;
-        }
-
-        private static bool NearlyEqual(double a, double b)
-        {
-            return a == b || Math.Abs(a - b) <= 1e-10 * Math.Max(1, Math.Max(Math.Abs(a), Math.Abs(b)));
         }
 
         private static bool IsLoop(CurveWrapMode mode)

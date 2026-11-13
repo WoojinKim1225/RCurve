@@ -109,32 +109,35 @@ public class RationalCurveBoundaryTests
     }
 
     [Test]
-    public void DerivativesClampReverseAndDetectNonDifferentiableBoundaries()
+    public void DerivativesClampReverseAndTakeTheOwningSegmentAtKeys()
     {
         var source = AnimationCurve.Linear(-2, 3, 2, 11);
         var clamped = FromUnweightedCurve(source);
         Assert.That(clamped.EvaluateSlope(-3), Is.EqualTo(0));
         Assert.That(clamped.EvaluateSlope(3), Is.EqualTo(0));
         Assert.That(clamped.EvaluateSlope(0), Is.EqualTo(2).Within(1e-12));
-        Assert.That(double.IsNaN(clamped.EvaluateSlope(-2)), Is.True);
-        Assert.That(double.IsNaN(clamped.EvaluateSlope(2)), Is.True);
+        // the first key's out tangent and the last key's in tangent, not the clamped 0 beside them
+        Assert.That(clamped.EvaluateSlope(-2), Is.EqualTo(2).Within(1e-12));
+        Assert.That(clamped.EvaluateSlope(2), Is.EqualTo(2).Within(1e-12));
 
         source.preWrapMode = source.postWrapMode = WrapMode.PingPong;
         var mirrored = FromUnweightedCurve(source);
         Assert.That(mirrored.EvaluateSlope(-3), Is.EqualTo(-2).Within(1e-12));
         Assert.That(mirrored.EvaluateSlope(3), Is.EqualTo(-2).Within(1e-12));
         Assert.That(mirrored.EvaluateSlope(7), Is.EqualTo(2).Within(1e-12));
+        // turnarounds map onto a key, which takes its owning segment's slope (curve direction, not the reflection's)
         foreach (double time in new[] { -6.0, -2, 2, 6 })
-            Assert.That(double.IsNaN(mirrored.EvaluateSlope(time)), Is.True);
+            Assert.That(mirrored.EvaluateSlope(time), Is.EqualTo(2).Within(1e-12), $"time={time}");
 
         source.preWrapMode = source.postWrapMode = WrapMode.Loop;
         var looped = FromUnweightedCurve(source);
         Assert.That(looped.EvaluateSlope(3), Is.EqualTo(2).Within(1e-12));
-        Assert.That(double.IsNaN(looped.EvaluateSlope(6)), Is.True);
+        // the seam maps onto the first key: the first segment's start
+        Assert.That(looped.EvaluateSlope(6), Is.EqualTo(2).Within(1e-12));
     }
 
     [Test]
-    public void SmoothJoinsHaveDerivativesButStepsAndCornersDoNot()
+    public void KeysTakeTheSlopeOfTheSegmentThatOwnsThem()
     {
         var source = new AnimationCurve(new Keyframe(0, 0, 1, 1), new Keyframe(1, 0, 1, 1));
         source.preWrapMode = source.postWrapMode = WrapMode.Loop;
@@ -150,13 +153,18 @@ public class RationalCurveBoundaryTests
 
         var corner = FromUnweightedCurve(new AnimationCurve(new Keyframe(0, 0, 0, 1),
             new Keyframe(1, 1, 1, -1), new Keyframe(2, 0, -1, 0)));
-        Assert.That(double.IsNaN(corner.EvaluateSlope(1)), Is.True);
+        // a corner: its out tangent; the in side is the previous segment's
+        Assert.That(corner.EvaluateSlope(1), Is.EqualTo(-1).Within(1e-12));
+        Assert.That(corner.Segments[0].EvaluateSlope(1), Is.EqualTo(1).Within(1e-12));
+        Assert.That(corner.EvaluateSlope(0), Is.EqualTo(1).Within(1e-12));
+        Assert.That(corner.EvaluateSlope(2), Is.EqualTo(-1).Within(1e-12));
         var stepSource = new AnimationCurve(new Keyframe(0, 2, 0, float.PositiveInfinity), new Keyframe(1, 5, float.PositiveInfinity, 0));
         stepSource.postWrapMode = WrapMode.PingPong;
         var step = FromUnweightedCurve(stepSource);
         Assert.That(step.EvaluateSlope(0.5), Is.EqualTo(0));
-        Assert.That(double.IsNaN(step.EvaluateSlope(1)), Is.True);
-        Assert.That(double.IsNaN(step.EvaluateSlope(3)), Is.True);
+        // a step is flat, at its keys too
+        Assert.That(step.EvaluateSlope(1), Is.EqualTo(0));
+        Assert.That(step.EvaluateSlope(3), Is.EqualTo(0));
         Assert.That(step.EvaluateSlope(2), Is.EqualTo(0));
     }
 
