@@ -13,6 +13,7 @@ The API baseline is **Unity 6000.0 (Unity 6.0)**. The package uses shared Unity 
 
 | Version / host | Installation | Results |
 |---|---|---|
+| 0.5.2 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); Curve Comparison copied into Assets | **308/308 Edit Mode passed** |
 | 0.5.1 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); Curve Comparison copied into Assets | **304/304 Edit Mode passed** |
 | 0.5.0 / Unity 6000.6.8f1 | Local UPM (`file:` working copy); both samples copied into Assets | **304/304 Edit Mode passed, including the sample tests and the 500-curve contract tests** |
 | 0.4.2 / Unity 6000.6.8f1 | Local UPM (`file:` working copy), sample not imported | **297/297 Edit Mode passed** |

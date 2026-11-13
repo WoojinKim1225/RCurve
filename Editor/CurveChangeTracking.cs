@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -9,10 +10,13 @@ using Object = UnityEngine.Object;
 namespace RCurve.Editor
 {
     // Bakes curves changed where no Inspector draws them:
-    // - edits recorded through Undo, on any field (folded away or never shown), debounced like the Inspector's;
+    // - edits recorded with Undo.RecordObject, on any field (folded away or never shown), debounced like the
+    //   Inspector's (Unity does not raise Undo.postprocessModifications for SerializedObject.ApplyModifiedProperties
+    //   called from a script; such tools call CurveAutoBuild.Queue);
     // - assets reimported from disk (text edits, version control), built and saved at once;
     // - scenes as they open (a scene file is not an asset the importer hands over), marked dirty to save.
-    // Changes made without Undo and without a reimport are not seen; RationalCurve.IsStale tells them.
+    // Work is deferred to the next EditorApplication.update, which runs in batch mode too (delayCall does not).
+    // Changes made any other way are not seen here; RationalCurve.IsStale tells them, and evaluation throws.
     [InitializeOnLoad]
     internal static class CurveChangeTracking
     {
@@ -20,10 +24,21 @@ namespace RCurve.Editor
         {
             Undo.postprocessModifications += OnModifications;
             EditorSceneManager.sceneOpened += (scene, mode) => QueueScene(scene);
-            EditorApplication.delayCall += () =>
+            NextTick(() =>
             {
                 for (int i = 0; i < SceneManager.sceneCount; i++) QueueScene(SceneManager.GetSceneAt(i));
-            };
+            });
+        }
+
+        // once, on the next editor update
+        private static void NextTick(Action action)
+        {
+            void Run()
+            {
+                EditorApplication.update -= Run;
+                action();
+            }
+            EditorApplication.update += Run;
         }
 
         // The modification is recorded before it is applied, so the curve is read on the next editor tick.
@@ -37,16 +52,16 @@ namespace RCurve.Editor
                 if (target != null && path != null) changed.Add((target, path));
             }
             if (changed.Count > 0)
-                EditorApplication.delayCall += () =>
+                NextTick(() =>
                 {
                     foreach ((Object target, string path) in changed) CurveAutoBuild.Queue(target, path);
-                };
+                });
             return modifications;
         }
 
         // The curve a property path is inside: everything before its "_source" or "_settings", or the path itself
         // (a whole curve replaced). Queue ignores a path that is not a RationalCurve.
-        private static string CurvePath(string propertyPath)
+        internal static string CurvePath(string propertyPath)
         {
             if (string.IsNullOrEmpty(propertyPath)) return null;
             int at = LastPart(propertyPath, "_source");
@@ -119,10 +134,10 @@ namespace RCurve.Editor
                     if ((path.EndsWith(".asset") || path.EndsWith(".prefab")) && MayHoldCurve(path)) paths.Add(path);
                 if (paths.Count == 0) return;
                 // assets are changed and saved after the import, not during it
-                EditorApplication.delayCall += () =>
+                NextTick(() =>
                 {
                     foreach (string path in paths) BuildAsset(path);
-                };
+                });
             }
 
             // a text asset holding a RationalCurve has its "_hasBake" field; a binary one is checked by loading it

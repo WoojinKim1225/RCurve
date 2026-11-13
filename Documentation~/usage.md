@@ -38,7 +38,7 @@ public class Motion : MonoBehaviour
 }
 ```
 
-일반 Inspector는 `▶ 이름 [곡선]` 한 줄이다. 펼치면 목적함수, 차수, 높이/기울기 오차, 최대 분할 깊이, Lookup Mode가 나온다. 마지막 편집 후 0.35초가 지나고 드래그가 끝나면 bake한다. Inspector에 그려지지 않은 필드도 Undo로 기록된 수정이면 같은 방식으로, 디스크에서 다시 임포트된 `.asset`/`.prefab`(텍스트 수정, 머지)은 즉시 bake해 저장하고, 씬은 열 때 bake한 뒤 dirty로 표시한다. Play Mode에서는 fitting하지 않는다.
+일반 Inspector는 `▶ 이름 [곡선]` 한 줄이다. 펼치면 목적함수, 차수, 높이/기울기 오차, 최대 분할 깊이, Lookup Mode가 나온다. 마지막 편집 후 0.35초가 지나고 드래그가 끝나면 bake한다. Inspector에 그려지지 않은 필드도 `Undo.RecordObject`로 기록된 수정이면 같은 방식으로(스크립트에서 부른 `SerializedObject.ApplyModifiedProperties`는 Unity가 Undo 수정 이벤트를 내지 않으므로 그런 도구는 `CurveAutoBuild.Queue`를 호출한다), 디스크에서 다시 임포트된 `.asset`/`.prefab`(텍스트 수정, 머지)은 즉시 bake해 저장하고, 씬은 열 때 bake한 뒤 dirty로 표시한다. Play Mode에서는 fitting하지 않는다.
 
 - 기본 오차: 높이 0.001, 기울기 0.01, 최대 분할 깊이 8.
 - 차수: Low 3/3, Medium 4/4, High 5/5, XHigh 6/6.
@@ -121,7 +121,7 @@ var editable = new RationalCurve(sourceAnimationCurve, settings);
 editable.Bake();
 ```
 
-Inspector 밖에서 source를 수정하는 Editor 도구는 `SerializedProperty`로 수정한다. Undo로 기록한 수정과 디스크에서 다시 임포트된 `.asset`/`.prefab`은 자동으로 bake되고, 그 밖의 경로는 CurveAutoBuild.Queue를 명시적으로 호출한다. 플레이어에서 사용자가 만든 커브는 완성된 AnimationCurve로 새 RationalCurve를 만들어 한 번 bake한다:
+Inspector 밖에서 source를 수정하는 Editor 도구는 `SerializedProperty`로 수정한다. `Undo.RecordObject`로 기록한 수정과 디스크에서 다시 임포트된 `.asset`/`.prefab`은 자동으로 bake되고, 그 밖의 경로는 CurveAutoBuild.Queue를 명시적으로 호출한다. 플레이어에서 사용자가 만든 커브는 완성된 AnimationCurve로 새 RationalCurve를 만들어 한 번 bake한다:
 
 ```csharp
 var runtimeCurve = new RationalCurve(userAnimationCurve);
@@ -191,6 +191,7 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 - `RationalCurveHintBenchmarkTests`: 정방향/역방향/Loop/1% seek/랜덤 접근의 힌트 유무 비교.
 - `CurveComparisonSceneTests`: 저장된 데모 bake/마커/오차를 Edit Mode에서 확인. 실제 Play/렌더링 검증과는 다르다.
 - `SegmentCertificateTests`: Bernstein 부호 판정, 합성·구간 제한의 정확성, 실제 fit 구간에서 촘촘한 실측 최대 오차의 1.05배는 증명되고 0.95배는 거부되는지.
+- `CurveChangeTrackingTests`: Inspector 밖 자동 bake 세 경로(`Undo.RecordObject` 수정, 디스크에서 바뀐 에셋의 재임포트, 씬 열기)와 수정된 속성 경로에서 커브를 찾는 규칙.
 - `ContractTests`: 형식 버전 기록과 더 새 형식 거부, 재bake의 비트 동일성, 500개 무작위 커브의 정확한 원본 대비 오차 한도(전부 단언)와 Unity 대비(weighted가 아닌 구간만 단언), 경계 케이스(키 1개·0개, 길이 0/최대 핸들, 범위 밖 가중치, 계단, 같은 시각·역순 키).
 
 속도에 pass/fail 한도를 걸지 않는다. 비용 모델은 특정 에디터/CPU에서 보정한 정책이며 플레이어/AOT의 최속 보장이 아니다.

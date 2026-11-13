@@ -35,7 +35,7 @@ public class Motion : MonoBehaviour
 
 Edit the source in the Inspector. Expand its foldout for fitting and lookup settings. Defaults: **Minimax / High (5/5) / Auto lookup**.
 
-The Editor bakes whenever a curve changes: Inspector edits after a short debounce, Undo-recorded edits to fields no Inspector is drawing, `.asset`/`.prefab` files reimported from disk (text edits, merges), and scenes as they open. Bakes are saved with the asset; players only evaluate.
+The Editor bakes whenever a curve changes: Inspector edits after a short debounce, edits recorded with `Undo.RecordObject` to fields no Inspector is drawing (a tool that changes a curve another way calls `CurveAutoBuild.Queue`), `.asset`/`.prefab` files reimported from disk (text edits, merges), and scenes as they open. Bakes are saved with the asset; players only evaluate.
 
 Code builds a curve from a finished `AnimationCurve` and bakes it once. The source is copied in and only a copy comes out (`CopySource()`), so a baked curve cannot be edited from code; make a new one instead:
 

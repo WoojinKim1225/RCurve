@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+- Fixed: baking outside the Inspector (Undo-recorded edits, reimported assets, the open-scene scan at editor start) deferred its work with `EditorApplication.delayCall`, which never runs in batch mode, so command-line and CI imports left reimported curves unbaked. It now runs on the next `EditorApplication.update`.
+- Clarified which edits are seen: those recorded with `Undo.RecordObject`. Unity raises no Undo modification event for `SerializedObject.ApplyModifiedProperties` called from a script; such tools call `CurveAutoBuild.Queue`.
+- Added tests for the three paths (Undo-recorded edit of an undrawn field, an asset edited on disk and reimported, a stale curve in a scene as it opens) and for finding the curve an edited property belongs to.
+
 ## 0.5.1
 
 - Removed the Runtime Web Demo sample and its hosted WebGL build (it still showed 0.3.1). The Curve Comparison sample remains.
