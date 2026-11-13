@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3
+
+- Magic's managed lookup now throws if it misses after its one correction, instead of silently falling back to binary search. The miss is unreachable while the predictor's certificate holds (monotone over the whole range, within 1 − 10⁻⁶ of every key's index, checked at bake and load); a new test queries 283 Magic curves at keys, adjacent doubles, midpoints, random and wrapped times without reaching it. The Burst lookup, which cannot rely on exceptions in release players, keeps the binary search there.
+- README and usage guide: explained that Magic proves its one-interval search bound at bake time, the same proof-offline, constant-time-runtime idea as the error bounds, and stated exactly what happens when no predictor can be certified.
+
 ## 0.5.2
 
 - Fixed: baking outside the Inspector (Undo-recorded edits, reimported assets, the open-scene scan at editor start) deferred its work with `EditorApplication.delayCall`, which never runs in batch mode, so command-line and CI imports left reimported curves unbaked. It now runs on the next `EditorApplication.update`.

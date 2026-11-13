@@ -198,7 +198,11 @@ namespace RCurve
                 if (time < _times[interval] && interval > 0) interval--;
                 else if (time >= _times[interval + 1] && interval + 1 < _segments.Length) interval++;
                 if (TryInterval(time, interval, out key, out resolvedInterval)) return key;
-                // Defensive fallback for numerical anomalies; never trust a predicted interval blindly.
+                // Unreachable while the predictor's certificate holds (checked when the curve is built or loaded):
+                // monotone over the whole domain and within 1 - 1e-6 of every key's index, so floor(f) is at most one
+                // interval off and the single correction above lands. Getting here means the certificate is broken.
+                throw new InvalidOperationException(
+                    $"Magic lookup missed time {time}: the index predictor's certificate does not hold.");
             }
             key = Array.BinarySearch(_times, time);
             resolvedInterval = key >= 0 ? Math.Min(key, _segments.Length - 1) : ~key - 1;

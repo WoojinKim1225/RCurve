@@ -71,7 +71,9 @@ Generated with RCurve 0.3.0 in Unity 6000.5.8f1, using default fitting settings.
 
 Choose **Auto**, **BruteForce**, **LUT**, or **Magic** independently of fitting quality.
 
-Auto uses a benchmark-calibrated cost model at bake time, with separate managed/Burst choices. LUT storage is limited to 1 KiB per curve. Magic uses a certified global index predictor plus at most one adjacent-interval correction. Binary search remains an internal candidate/fallback. Auto is an estimated policy, **not a guarantee of the fastest strategy on every CPU or access pattern**.
+Auto uses a benchmark-calibrated cost model at bake time, with separate managed/Burst choices. LUT storage is limited to 1 KiB per curve. Binary search is the default when no other strategy is chosen. Auto is an estimated policy, **not a guarantee of the fastest strategy on every CPU or access pattern**.
+
+**Magic proves its search bound at bake time, so the runtime search is constant-time.** Learned-index lookups usually search a window sized by the largest error seen on their data; Magic fixes the window at one interval and proves it. At bake time it checks that its predictor is monotone over the whole time range (exactly: the cubic's derivative is a quadratic whose minimum is computed in closed form) and within 1 − 10⁻⁶ of every key's index. Together these put every query's floored prediction at most one interval from the right one, with a margin far above double rounding, so a lookup is one polynomial evaluation, at most one correction step and two boundary comparisons, with no loop. It is the same idea as the error bounds: pay for the proof offline, run in proven constant time.
 
 ![On one proportional time axis, the orange guessed interval 2 ends at 0.91, while the purple query at 0.95 lies in green interval 3. Magic moves one interval right.](Documentation~/images/magic-lookup.svg)
 
@@ -79,7 +81,7 @@ Orange is the guess; green contains the query. **The time does not move—the ca
 
 **Magic predicts where to evaluate, not the animation value.** At bake time it fits a global linear/cubic map from baked key times—including subdivision boundaries—to their indices. At runtime, after time wrapping, it evaluates that map, floors and clamps the result to a candidate interval, then checks the actual boundaries. It keeps the candidate or moves one interval left/right, verifies the result, and evaluates the located segment. Exact keys return stored values.
 
-In this actual linear-predictor example, `t = 0.95 → f(t) ≈ 2.877 → candidate 2`. Since `0.95 ≥ times[3] ≈ 0.91`, the lookup moves right to interval 3 before evaluating the curve. Failed predictor validation selects binary search; failed runtime interval verification also falls back to binary search. [Inputs and trace checks](Documentation~/graphs.md).
+In this actual linear-predictor example, `t = 0.95 → f(t) ≈ 2.877 → candidate 2`. Since `0.95 ≥ times[3] ≈ 0.91`, the lookup moves right to interval 3 before evaluating the curve. If no predictor can be certified at bake time, the curve uses binary search instead (and says so in `LookupFallbackReason`); a loaded bake whose predictor fails the check is refused. Missing after the one correction is unreachable while the certificate holds: the managed evaluator throws there, and the Burst evaluator, which cannot rely on exceptions in release players, falls through to binary search. [Inputs and trace checks](Documentation~/graphs.md).
 
 ## Samples
 

@@ -140,6 +140,57 @@ public sealed class ContractTests
         Assert.That(baked, Is.GreaterThan(450));
     }
 
+    // Magic's one-step correction is proven at bake time, so the managed lookup's miss path (which throws) is never
+    // reached: query every key, its neighbouring doubles, interval midpoints, random times and wrapped times, and
+    // compare with the same curve baked for brute-force lookup.
+    [Test]
+    public void MagicLookupNeverMissesAfterItsOneCorrection()
+    {
+        var random = new System.Random(4242);
+        int magicCurves = 0;
+        for (int c = 0; c < 300; c++)
+        {
+            AnimationCurve source = RandomCurve(random, allowSteps: true);
+            source.preWrapMode = random.Next(2) == 0 ? WrapMode.Loop : WrapMode.ClampForever;
+            source.postWrapMode = random.Next(2) == 0 ? WrapMode.PingPong : WrapMode.Loop;
+            BakedRationalCurve magic, brute;
+            try
+            {
+                magic = RationalCurveBuilder.Build(source, new CurveFitSettings(lookupMode: CurveLookupMode.Magic));
+                brute = RationalCurveBuilder.Build(source, new CurveFitSettings(lookupMode: CurveLookupMode.BruteForce));
+            }
+            catch (InvalidOperationException) { continue; }
+            if (magic.ManagedLookup != CurveLookupStrategy.Magic) continue;
+            magicCurves++;
+            double[] times = magic.KeyTimes.ToArray();
+            double first = times[0], span = times[times.Length - 1] - first;
+            var queries = new System.Collections.Generic.List<double>();
+            for (int i = 0; i < times.Length; i++)
+            {
+                queries.Add(times[i]);
+                queries.Add(Neighbour(times[i], -1));
+                queries.Add(Neighbour(times[i], +1));
+                if (i + 1 < times.Length) queries.Add(0.5 * (times[i] + times[i + 1]));
+            }
+            for (int i = 0; i < 200; i++) queries.Add(first - span + random.NextDouble() * 3 * span);
+            foreach (double time in queries)
+            {
+                double expected = brute.Evaluate(time);
+                double actual = magic.Evaluate(time);
+                Assert.That(actual.Equals(expected), Is.True, $"curve {c} at {time:R}: {actual:R} vs {expected:R}");
+            }
+        }
+        TestContext.WriteLine($"curves using Magic: {magicCurves}");
+        Assert.That(magicCurves, Is.GreaterThan(100));
+    }
+
+    private static double Neighbour(double value, int direction)
+    {
+        if (value == 0) return direction * double.Epsilon;
+        long bits = BitConverter.DoubleToInt64Bits(value);
+        return BitConverter.Int64BitsToDouble(value > 0 ? bits + direction : bits - direction);
+    }
+
     [Test]
     public void EdgeCasesBakeLikeUnityOrFailWithTheDocumentedException()
     {

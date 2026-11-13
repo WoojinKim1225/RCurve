@@ -211,6 +211,8 @@ namespace RCurve
                 if (time < _times[interval] && interval > 0) interval--;
                 else if (time >= _times[interval + 1] && interval + 1 < _segments.Length) interval++;
                 if (TryInterval(time, interval, out key, out resolvedInterval)) return key;
+                // Unreachable while the certificate holds (see BakedRationalCurve). The managed path throws here;
+                // Burst cannot be relied on to throw in release players, so this one falls through to binary search.
             }
             while (low <= high)
             {
