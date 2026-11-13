@@ -43,6 +43,7 @@ public class Motion : MonoBehaviour
 - 기본 오차: 높이 0.001, 기울기 0.01, 최대 분할 깊이 8.
 - 차수: Low 3/3, Medium 4/4, High 5/5, XHigh 6/6.
 - 실패하면 마지막 정상 bake를 유지하고 오류를 표시한다. 처음부터 bake가 없으면 평가 시 예외다.
+- 불러온 뒤 첫 평가 때 원본/설정 해시를 bake 때의 해시와 비교한다. 달라졌으면(Undo 없는 에디터 도구의 수정, 텍스트 수정, 머지, 실패한 재bake) 예전 bake로 평가하지 않고 예외다. 원본은 직렬화(Inspector, 에셋 파일)로만 바뀐다. 코드에는 복사본(`CopySource()`)만 주고, 생성자도 받은 커브를 복사한다.
 - 원본/설정/bake는 직렬화된다. Undo/Redo와 관찰 중인 필드의 저장 전 대기 bake를 지원한다.
 - bake 정보는 기본 Debug Inspector의 `_baked`에서 본다. 별도 디버그 토글은 없다.
 
@@ -117,10 +118,10 @@ var settings = new CurveFitSettings(
     CurveFitObjective.Minimax, CurveFitQuality.High,
     lookupMode: CurveLookupMode.Auto);
 var editable = new RationalCurve(sourceAnimationCurve, settings);
-editable.StoreBuild(RationalCurveBuilder.Build(editable.Source, editable.Settings), editable.InputHash);
+editable.Bake();
 ```
 
-Inspector 밖에서 source를 수정하는 Editor 도구는 Build/StoreBuild 또는 CurveAutoBuild.Queue를 명시적으로 호출한다. 플레이어에서 사용자가 만든 커브는 변경이 끝난 시점에 한 번 bake한다:
+Inspector 밖에서 source를 수정하는 Editor 도구는 `SerializedProperty`로 수정한다. Undo로 기록한 수정과 디스크에서 다시 임포트된 `.asset`/`.prefab`은 자동으로 bake되고, 그 밖의 경로는 CurveAutoBuild.Queue를 명시적으로 호출한다. 플레이어에서 사용자가 만든 커브는 완성된 AnimationCurve로 새 RationalCurve를 만들어 한 번 bake한다:
 
 ```csharp
 var runtimeCurve = new RationalCurve(userAnimationCurve);

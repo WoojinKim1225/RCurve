@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using NUnit.Framework;
 using RCurve;
 using RCurve.Editor;
@@ -30,7 +31,7 @@ public class RationalCurveBuildTests
         curve.Bake();
         Assert.That(curve.HasBake, Is.True);
         Assert.That(curve.IsStale, Is.False);
-        Assert.That(curve.Evaluate(0.5), Is.EqualTo(curve.Source.Evaluate(0.5f)).Within(0.0011));
+        Assert.That(curve.Evaluate(0.5), Is.EqualTo(curve.CopySource().Evaluate(0.5f)).Within(0.0011));
     }
 
     [Test]
@@ -98,30 +99,52 @@ public class RationalCurveBuildTests
     }
 
     [Test]
-    public void SerializationRestoresCoefficientsWithoutRefittingAndKeepsLastGoodResult()
+    public void SerializationRestoresCoefficientsWithoutRefittingAndKeepsLastGoodBakeWithoutEvaluatingIt()
     {
         var field = new RationalCurve(Weighted());
         string hash = field.InputHash;
-        Assert.That(field.StoreBuild(RationalCurveBuilder.Build(field.Source, field.Settings), hash), Is.True);
+        field.Bake();
         double expected = field.Evaluate(0.37);
         var restored = JsonUtility.FromJson<RationalCurve>(JsonUtility.ToJson(field));
         Assert.That(restored.HasBake, Is.True);
         Assert.That(restored.IsStale, Is.False);
         restored.OnAfterDeserialize();
         Assert.That(restored.Evaluate(0.37), Is.EqualTo(expected).Within(1e-10));
-        Keyframe key = restored.Source[0];
+        // the source changed through serialization (a text edit, a merge), as Unity would load it
+        AnimationCurve changed = restored.CopySource();
+        Keyframe key = changed[0];
         key.outWeight = 0;
-        restored.Source.MoveKey(0, key);
+        changed.MoveKey(0, key);
+        SetSource(restored, changed);
+        restored.OnAfterDeserialize();
         Assert.That(restored.IsStale, Is.True);
-        Assert.Throws<NotSupportedException>(() => RationalCurveBuilder.Build(restored.Source));
+        Assert.Throws<NotSupportedException>(() => RationalCurveBuilder.Build(restored.CopySource()));
         restored.StoreBuildFailure(restored.InputHash, "stationary X");
         Assert.That(restored.NeedsBuild, Is.False);
         Assert.That(restored.BuildError, Is.Not.Empty);
-        Assert.That(restored.Evaluate(0.37), Is.EqualTo(expected).Within(1e-10));
+        Assert.That(restored.HasBake, Is.True);
+        Assert.That(() => restored.Evaluate(0.37), Throws.InvalidOperationException.With.Message.Contains("latest bake failed"));
         Assert.That(restored.StoreBuild(field.BakedCurve, hash), Is.False, "Do not publish a result for an older edit.");
         Assert.Throws<InvalidOperationException>(() => RationalCurveBuilder.Build(Weighted(),
             new CurveFitSettings(maxValueError: 1e-14, maxSlopeError: 1e-14, maxSubdivisionDepth: 0)));
     }
+
+    [Test]
+    public void SourceIsCopiedInAndOut()
+    {
+        AnimationCurve given = AnimationCurve.Linear(0, 0, 1, 1);
+        var curve = new RationalCurve(given);
+        string hash = curve.InputHash;
+        given.MoveKey(1, new Keyframe(1, 2));
+        Assert.That(curve.InputHash, Is.EqualTo(hash));
+        AnimationCurve copy = curve.CopySource();
+        copy.MoveKey(1, new Keyframe(1, 3));
+        Assert.That(curve.InputHash, Is.EqualTo(hash));
+        Assert.That(curve.CopySource()[1].value, Is.EqualTo(1));
+    }
+
+    private static void SetSource(RationalCurve curve, AnimationCurve source) =>
+        typeof(RationalCurve).GetField("_source", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(curve, source);
 
     [UnityTest]
     public IEnumerator InspectorQueueDebouncesTheLatestInput()
@@ -225,7 +248,8 @@ public class RationalCurveBuildTests
             Assert.That(failed.IsStale, Is.True);
             Assert.That(failed.NeedsBuild, Is.False);
             Assert.That(failed.BuildError, Is.Not.Empty);
-            Assert.That(failed.Evaluate(0.5), Is.EqualTo(2).Within(1e-10));
+            // the last good bake is kept but not evaluated against the changed source
+            Assert.That(() => failed.Evaluate(0.5), Throws.InvalidOperationException.With.Message.Contains("latest bake failed"));
         }
         finally { Object.DestroyImmediate(gameObject); }
     }

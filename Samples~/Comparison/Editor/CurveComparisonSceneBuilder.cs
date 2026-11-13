@@ -33,7 +33,7 @@ namespace RCurve.Demo.Editor
             foreach (var root in scene.GetRootGameObjects())
                 if (root.TryGetComponent<CurveComparisonDemo>(out var demo))
                 {
-                    demo.Curve.StoreBuild(RationalCurveBuilder.Build(demo.Curve.Source, demo.Curve.Settings), demo.Curve.InputHash);
+                    demo.Curve.Bake();
                     if (!EditorSceneManager.SaveScene(scene)) throw new IOException("Could not save rebaked scene.");
                     return;
                 }

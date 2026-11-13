@@ -47,7 +47,9 @@ namespace RCurve
         [SerializeField] private string _buildError;
         [NonSerialized] private BakedRationalCurve _cached;
 
-        public AnimationCurve Source => _source;
+        // A copy of the source curve: the source changes only through serialization (the Inspector, the asset's
+        // file), so a baked curve cannot be edited from code into a curve its bake no longer matches.
+        public AnimationCurve CopySource() => Copy(_source);
         public CurveFitSettings Settings => _settings;
         public bool HasBake => _hasBake;
         public string BuildError => _buildError;
@@ -85,6 +87,13 @@ namespace RCurve
             {
                 if (!_hasBake) throw new InvalidOperationException("The curve has not been baked.");
                 if (_cached != null) return _cached;
+                // Checked once per load, before the first evaluation: a source or settings changed since the bake
+                // (by code without Undo, a text edit, a merge) is not evaluated with the old bake.
+                string inputHash = InputHash;
+                if (inputHash != _builtInput)
+                    throw new InvalidOperationException(inputHash == _attemptedInput && !string.IsNullOrEmpty(_buildError)
+                        ? "The curve's latest bake failed: " + _buildError
+                        : "The curve's source or settings changed since it was baked.");
                 var segments = new RationalCurveSegment[_baked.Segments.Length];
                 for (int i = 0; i < segments.Length; i++)
                 {
@@ -114,7 +123,7 @@ namespace RCurve
 
         public RationalCurve(AnimationCurve source = null, CurveFitSettings settings = null)
         {
-            _source = source ?? AnimationCurve.Linear(0, 0, 1, 1);
+            _source = source != null ? Copy(source) : AnimationCurve.Linear(0, 0, 1, 1);
             _settings = settings ?? new CurveFitSettings();
         }
 
@@ -160,6 +169,9 @@ namespace RCurve
             _attemptedInput = inputHash;
             _buildError = message;
         }
+
+        private static AnimationCurve Copy(AnimationCurve curve) =>
+            new AnimationCurve(curve.keys) { preWrapMode = curve.preWrapMode, postWrapMode = curve.postWrapMode };
 
         public void OnBeforeSerialize() { }
         public void OnAfterDeserialize() { _cached = null; }

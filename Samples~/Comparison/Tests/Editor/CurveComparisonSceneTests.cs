@@ -68,7 +68,7 @@ public class CurveComparisonSceneTests
             Assert.That(demo.Curve.Settings.Objective, Is.EqualTo(CurveFitObjective.Minimax));
             var baked = demo.Curve.BakedCurve;
             double[] times = baked.KeyTimes.ToArray();
-            foreach (Keyframe key in demo.Curve.Source.keys)
+            foreach (Keyframe key in demo.Curve.CopySource().keys)
             {
                 int index = Array.BinarySearch(times, (double)key.time);
                 Assert.That(index, Is.GreaterThanOrEqualTo(0), "Authored keys remain segment boundaries.");
@@ -82,7 +82,7 @@ public class CurveComparisonSceneTests
             for (int i = 0; i <= 4096; i++)
             {
                 float time = i / 4096f;
-                maximum = Math.Max(maximum, Math.Abs(demo.Curve.Source.Evaluate(time) - demo.Curve.Evaluate(time)));
+                maximum = Math.Max(maximum, Math.Abs(demo.Curve.CopySource().Evaluate(time) - demo.Curve.Evaluate(time)));
             }
             Assert.That(maximum, Is.LessThanOrEqualTo(0.0011));
             Assert.That(Application.isPlaying, Is.False, "This validates scene data, not Play Mode or rendered UX.");

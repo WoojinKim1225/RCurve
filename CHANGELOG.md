@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- **Breaking:** `RationalCurve.Source` is removed; `CopySource()` returns a copy, and the constructor copies the curve it is given. The source changes only through serialization (the Inspector, the asset's file), so code cannot edit a baked curve into one its bake no longer matches. Editor tools change it through `SerializedProperty`; a player builds a new `RationalCurve` and bakes it.
+- Curves now bake when they change, not only while an Inspector draws them: edits recorded through Undo on any field (folded or never shown) are debounced like Inspector edits; `.asset`/`.prefab` files reimported from disk (text edits, version control) are built and saved at once; open scenes are queued as they open and marked dirty.
+- **Behavior change:** the first evaluation after a curve is loaded (or baked) checks the bake against its source and settings, and throws `InvalidOperationException` if they changed since (an editor tool without Undo, a text edit, a merge) or the latest bake failed. A failed bake still keeps the last good result in the asset and Inspector, but it is no longer evaluated against the changed source.
+
 ## 0.3.1
 
 - Runtime Web Demo supports 2–5 equally spaced keys with independent incoming/outgoing slopes and weights, retaining the Ease/Wave/Overshoot presets.

@@ -63,7 +63,7 @@ Actual output from the current working tree in Unity 6000.5.8f1, using default f
 - `curve.Bake()` fits and stores the current source in Editor or player code.
 - `NativeRationalCurve.Create(curve.BakedCurve, allocator)` makes a Job snapshot. Complete readers before disposing one owner; struct copies share allocations.
 - Use Burst `FloatMode.Strict` / `FloatPrecision.High`. Calling a method directly does not make it Burst-compiled.
-- Failed rebakes keep the last good result. An unbaked curve cannot be evaluated.
+- Failed rebakes keep the last good result in the asset and Inspector. An unbaked curve cannot be evaluated, and neither can one whose source or settings changed since its bake: the first evaluation after loading checks this and throws.
 
 ## Lookup strategies
 

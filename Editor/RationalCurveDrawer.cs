@@ -179,9 +179,26 @@ namespace RCurve.Editor
             SerializedProperty property = serialized.FindProperty(pending.PropertyPath);
             if (!(property?.boxedValue is RationalCurve curve)) { _observed.Remove(pending); return; }
             if (curve.InputHash != expectedHash) { Queue(target, pending.PropertyPath); return; }
+            Store(target, serialized, property, curve, expectedHash);
+        }
+
+        // Builds now, without the debounce, when the curve's input changed since its last attempt; whether it built.
+        internal static bool BuildNow(Object target, string propertyPath)
+        {
+            if (target == null || EditorApplication.isPlayingOrWillChangePlaymode) return false;
+            using var serialized = new SerializedObject(target);
+            SerializedProperty property = serialized.FindProperty(propertyPath);
+            if (!(property?.boxedValue is RationalCurve curve) || !curve.NeedsBuild) return false;
+            Store(target, serialized, property, curve, curve.InputHash);
+            return true;
+        }
+
+        private static void Store(Object target, SerializedObject serialized, SerializedProperty property,
+            RationalCurve curve, string expectedHash)
+        {
             try
             {
-                curve.StoreBuild(RationalCurveBuilder.Build(curve.Source, curve.Settings), expectedHash);
+                curve.Bake();
             }
             catch (Exception exception) when (exception is ArgumentException || exception is InvalidOperationException || exception is NotSupportedException)
             {

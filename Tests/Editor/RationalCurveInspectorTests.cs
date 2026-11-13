@@ -28,7 +28,8 @@ public class RationalCurveInspectorTests
             Assert.That(drawer.GetPropertyHeight(property, label), Is.EqualTo(expected));
 
             var curve = (RationalCurve)property.boxedValue;
-            Assert.That(curve.StoreBuild(RationalCurveBuilder.Build(curve.Source, curve.Settings), curve.InputHash), Is.True);
+            curve.Bake();
+            Assert.That(curve.HasBake, Is.True);
             property.boxedValue = curve;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             serialized.Update();
@@ -53,7 +54,7 @@ public class RationalCurveInspectorTests
             using var serialized = new SerializedObject(host);
             SerializedProperty property = serialized.FindProperty("Curve");
             var curve = (RationalCurve)property.boxedValue;
-            curve.StoreBuild(RationalCurveBuilder.Build(curve.Source), curve.InputHash);
+            curve.Bake();
             property.boxedValue = curve;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
@@ -83,7 +84,7 @@ public class RationalCurveInspectorTests
         foreach (AssemblyName reference in typeof(BakedRationalCurve).Assembly.GetReferencedAssemblies())
             Assert.That(reference.Name.StartsWith("UnityEngine", StringComparison.Ordinal), Is.False);
         var curve = new RationalCurve();
-        curve.StoreBuild(RationalCurveBuilder.Build(curve.Source), curve.InputHash);
+        curve.Bake();
         var restored = JsonUtility.FromJson<RationalCurve>(JsonUtility.ToJson(curve));
         Assert.That(restored.IsStale, Is.False);
         Assert.That(restored.BakedCurve, Is.TypeOf<BakedRationalCurve>());

@@ -66,7 +66,7 @@ namespace RCurve.Demo
                 RefreshUI();
                 return;
             }
-            _source = new AnimationCurve(Curve.Source.keys) { preWrapMode = Curve.Source.preWrapMode, postWrapMode = Curve.Source.postWrapMode };
+            _source = Curve.CopySource();
             _baked = Curve.BakedCurve;
             ApplyTime();
         }
