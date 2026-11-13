@@ -143,6 +143,22 @@ public class RationalCurveBuildTests
         Assert.That(curve.CopySource()[1].value, Is.EqualTo(1));
     }
 
+    [Test]
+    public void StartAndEndAreTheFirstAndLastKeys()
+    {
+        var curve = new RationalCurve(new AnimationCurve(new Keyframe(0.2f, 1), new Keyframe(0.5f, 5), new Keyframe(0.8f, 3)));
+        Assert.That(() => curve.EndTime, Throws.InvalidOperationException, "Not baked yet.");
+        curve.Bake();
+        Assert.That(curve.StartTime, Is.EqualTo(0.2f));
+        Assert.That(curve.EndTime, Is.EqualTo(0.8f));
+        Assert.That(curve.StartValue, Is.EqualTo(1));
+        Assert.That(curve.EndValue, Is.EqualTo(3));
+        var empty = new RationalCurve(new AnimationCurve());
+        empty.Bake();
+        Assert.That(() => empty.StartTime, Throws.InvalidOperationException.With.Message.Contains("no keys"));
+        Assert.That(() => empty.EndValue, Throws.InvalidOperationException.With.Message.Contains("no keys"));
+    }
+
     private static void SetSource(RationalCurve curve, AnimationCurve source) =>
         typeof(RationalCurve).GetField("_source", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(curve, source);
 

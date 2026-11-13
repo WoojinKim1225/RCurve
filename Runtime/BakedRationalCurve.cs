@@ -34,6 +34,15 @@ namespace RCurve
         public ReadOnlySpan<double> KeyValues => _values;
         public ReadOnlySpan<RationalCurveSegment> Segments => _segments;
 
+        // The first and last keys' times and values (the stored key values, exactly as authored). A curve with no
+        // keys has neither, and throws.
+        public double StartTime => _times.Length > 0 ? _times[0] : throw NoKeys();
+        public double EndTime => _times.Length > 0 ? _times[_times.Length - 1] : throw NoKeys();
+        public double StartValue => _values.Length > 0 ? _values[0] : throw NoKeys();
+        public double EndValue => _values.Length > 0 ? _values[_values.Length - 1] : throw NoKeys();
+
+        private static InvalidOperationException NoKeys() => new InvalidOperationException("The curve has no keys.");
+
         // A null segment explicitly represents a step, not a missing/failed fit.
         // Each interval owns [times[i], times[i+1]); exact mapped keys return stored values.
         // Post Loop/Default wraps even the exact final key time to the first key.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Added `StartTime`, `EndTime`, `StartValue` and `EndValue` (the first and last keys) to `BakedRationalCurve` and `RationalCurve`; they throw for a curve with no keys, and on `RationalCurve` are checked like an evaluation.
+
 ## 0.4.0
 
 - **Breaking:** `RationalCurve.Source` is removed; `CopySource()` returns a copy, and the constructor copies the curve it is given. The source changes only through serialization (the Inspector, the asset's file), so code cannot edit a baked curve into one its bake no longer matches. Editor tools change it through `SerializedProperty`; a player builds a new `RationalCurve` and bakes it.

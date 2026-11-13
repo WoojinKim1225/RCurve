@@ -114,6 +114,12 @@ namespace RCurve
         public double Evaluate(double time, ref int intervalHint) => BakedCurve.Evaluate(time, ref intervalHint);
         public double EvaluateSlope(double time) => BakedCurve.EvaluateSlope(time);
 
+        // The baked curve's first and last keys (see BakedRationalCurve); checked like an evaluation.
+        public double StartTime => BakedCurve.StartTime;
+        public double EndTime => BakedCurve.EndTime;
+        public double StartValue => BakedCurve.StartValue;
+        public double EndValue => BakedCurve.EndValue;
+
         // Runtime fitting is intentionally explicit because it allocates and can be expensive.
         public void Bake()
         {
