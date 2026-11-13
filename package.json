@@ -1,6 +1,6 @@
 {
   "name": "com.woojinkim1225.rcurve",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "displayName": "RCurve",
   "description": "Rational AnimationCurve baking with key/tangent constraints, Burst evaluation, adaptive lookup, and optional interval hints.",
   "unity": "6000.0",
@@ -15,8 +15,7 @@
     "com.unity.modules.jsonserialize": "1.0.0"
   },
   "samples": [
-    { "displayName": "Curve Comparison", "description": "Side-by-side AnimationCurve and RationalCurve playback with a Canvas/uGUI dashboard.", "path": "Samples~/Comparison" },
-    { "displayName": "Runtime Web Demo", "description": "Interactive runtime baking and graph UI suitable for a WebGL build.", "path": "Samples~/Runtime Web Demo" }
+    { "displayName": "Curve Comparison", "description": "Side-by-side AnimationCurve and RationalCurve playback with a Canvas/uGUI dashboard.", "path": "Samples~/Comparison" }
   ],
   "keywords": ["animation", "curve", "rational", "burst", "baking"]
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Removed the Runtime Web Demo sample and its hosted WebGL build (it still showed 0.3.1). The Curve Comparison sample remains.
+
 ## 0.5.0
 
 Prepares the 1.0 contract (see README, Contract); no new fitting or evaluation features.

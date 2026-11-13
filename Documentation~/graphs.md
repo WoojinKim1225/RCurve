@@ -2,7 +2,7 @@
 
 README와 사용 가이드의 그래프는 임의로 그린 예상 결과가 아니라 **현재 RCurve 코드의
 관리형 평가 결과**에서 생성한 SVG다. 별도 PolynomialIndex 연구 결과를 가져오지 않는다.
-그래프는 0.3.0 코드로 생성했다. WebGL 데모는 별도의 입력과 fitting 설정을 사용하므로 이 그래프와 같은 실험은 아니다.
+그래프는 0.3.0 코드로 생성했다.
 
 - [원본과 bake 비교](images/curve-accuracy.svg)
 - [Magic의 인덱스 예측·구간 보정·값 평가](images/magic-lookup.svg)
@@ -112,6 +112,6 @@ SVG는 자체 흰 배경, 축 단위, 범례, title/description을 포함한다.
 ## 4. 성능 그래프를 넣지 않은 이유
 
 현재 그림은 정확도와 동작 설명용이다. 별도 연구 저장소의 PGM/RadixSpline 결과나
-WebGL UI 프레임 시간을 RCurve 성능 수치로 전용하지 않는다. 성능 그래프를 추가한다면
+UI 프레임 시간을 RCurve 성능 수치로 전용하지 않는다. 성능 그래프를 추가한다면
 [테스트 안내](testing.md)의 동일 입력·실제 Burst 실행 벤치마크에서 얻은 결과와
 호스트·설정·실행 조건을 함께 제시해야 한다.

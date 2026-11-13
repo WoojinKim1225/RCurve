@@ -4,8 +4,6 @@ Rational curve baking for Unity, with managed and Burst evaluators.
 
 **Preserves animation-key values and each finite in/out tangent exactly; between keys, stays within value and slope error bounds proven for every segment.** Steps, discontinuous derivatives and wrapping have explicit rules. This is a pre-1.0 release (**0.5.0**); the [Contract](#contract) is what 1.0 will keep.
 
-[Open the interactive WebGL demo](https://woojinkim1225.github.io/RCurve/).
-
 ## Install
 
 Unity Package Manager → **Install package from Git URL**:
@@ -54,7 +52,7 @@ For every smooth source interval, RCurve converts Unity's weighted Hermite key d
 P(u) = Σ pᵢ Bᵢ,ₙ(u)    Q(u) = Σ qᵢ Bᵢ,ₙ(u), qᵢ > 0    R(u) = P(u) / Q(u)
 ```
 
-The endpoint numerator coefficients are determined by the key values and finite tangents. Least-squares or minimax fitting on samples chooses the remaining coefficients. Each segment's value and slope errors are then proven over its whole interval: in the Bézier parameter both the source and the composed fit are polynomial, so each bound is the nonnegativity of a polynomial, decided by its Bernstein coefficients with de Casteljau refinement. A segment that cannot be proven is subdivided. Evaluation converts the Bernstein coefficients once to an allocation-free Horner form. See the [interactive graph](https://woojinkim1225.github.io/RCurve/) and [usage guide](Documentation~/usage.md).
+The endpoint numerator coefficients are determined by the key values and finite tangents. Least-squares or minimax fitting on samples chooses the remaining coefficients. Each segment's value and slope errors are then proven over its whole interval: in the Bézier parameter both the source and the composed fit are polynomial, so each bound is the nonnegativity of a polynomial, decided by its Bernstein coefficients with de Casteljau refinement. A segment that cannot be proven is subdivided. Evaluation converts the Bernstein coefficients once to an allocation-free Horner form. See the [usage guide](Documentation~/usage.md).
 
 ![A weighted Unity AnimationCurve and its RCurve bake overlap; a separate lower plot shows the signed approximation error.](Documentation~/images/curve-accuracy.svg)
 
@@ -91,10 +89,6 @@ In Package Manager, select **RCurve → Samples → Curve Comparison → Import*
 - Editable Canvas/uGUI dashboard: playback, reverse, seeking, optional hint, values and errors.
 - Only the signed-error bar is magnified. Marker positions use the actual values.
 - Stop Play Mode before editing/rebaking. The scene demonstrates accuracy, not reliable frame-time benchmarking.
-
-Import **Runtime Web Demo**, add `RCurveWebDemo` to an empty GameObject in your demo scene, then enter Play Mode. It does not auto-start in unrelated scenes. Choose **2–5 equally spaced keys** and adjust each value plus independent incoming/outgoing slopes and weights (handle strengths). Unused endpoint handles are disabled. Changes bake when a slider is released; a yellow dot follows the actual RCurve evaluation in a four-second loop. The graph auto-scales vertically and shows the maximum error at 161 sampled points, not a continuous error bound. The preview uses **LeastSquares / Low** and clamped endpoints, rather than the package's default fitting settings. Weights range from 0.01 to 1; unsupported or unfittable combinations report an error and keep the last good graph and moving point. This is the source for the WebGL demo; source changes require rebuilding and publishing the player.
-
-Run **Tools → RCurve → Check Web Demo** after importing to check baking, endpoint clamping and recovery from invalid input.
 
 Sample scripts and their UI dependency are separate from the core runtime assemblies. The comparison sample uses Built-in unlit materials; URP/HDRP hosts may need replacement materials. Its supplied EventSystem uses the Legacy Input Manager; configure InputSystemUIInputModule/UI Actions in Input System-only hosts.
 
