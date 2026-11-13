@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0
+
+The first stable release: no code changes from 0.7.0. From here every 1.x release keeps the [Contract](README.md#contract): proven value and slope error bounds against the exact source, exceptions instead of lower-quality results, versioned bakes, a stable input hash, bit-identical rebakes within one editor, defined slopes at every finite time, steps as segments, and the public surface as it stands. Supported editors are Unity 6000.6+; a Linux Mono player with Burst AOT is checked, IL2CPP players are not.
+
 ## 0.7.0
 
 - **Breaking:** steps are segments. `BakedRationalCurve.Segments` never holds null; a step is a `RationalCurveSegment` with `IsStep`, holding its start value over `[Start, End)` (slope 0). Under the curve's `[start, end)` ownership a step needs no special case: the jump belongs to the next key, which owns `End`. Code that detected steps with `segment == null` must use `IsStep` (it still compiles, so check). Asking a key's in side with `Segments[i - 1].EvaluateSlope(keyTime)` no longer fails after a step. Serialized bakes, the input hash and the Burst evaluator are unchanged.

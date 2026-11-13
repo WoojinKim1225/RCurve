@@ -5,7 +5,7 @@ Use a clean Unity 6 host project with the package installed. Add the Unity Test 
 ```json
 {
   "dependencies": {
-    "com.woojinkim1225.rcurve": "https://github.com/WoojinKim1225/RCurve.git#v0.5.0",
+    "com.woojinkim1225.rcurve": "https://github.com/WoojinKim1225/RCurve.git#v1.0.0",
     "com.unity.test-framework": "1.4.6"
   },
   "testables": ["com.woojinkim1225.rcurve"]

@@ -179,7 +179,7 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 - 제공 씬은 Legacy Input Manager용 StandaloneInputModule을 사용한다. Input System 전용 호스트에서는 EventSystem을 InputSystemUIInputModule로 바꾸고 UI Actions를 연결한다. 씬 생성 도구는 해당 입력 설정에서 Input System 모듈을 선택하며, 프로젝트에 없는 Input System 패키지를 임의로 추가하지 않는다.
 - 기존 Burst 1.8.18은 Unity 6.5의 TreeView API 변경과 충돌했다. manifest를 Unity 6.0 이상을 지원하는 Burst 1.8.30으로 갱신했다. PackageCache 소스는 수정하지 않는다.
 
-## 7. 계약 (1.0에서 고정할 약속)
+## 7. 계약 (1.x가 지키는 약속, 바꾸려면 2.0)
 
 - **오차 기준.** `MaxValueError`는 값 단위의 절대 오차, `MaxSlopeError`는 시간당 값 단위의 절대 오차다. 둘 다 bake된 각 구간 안의 모든 시각에서, 키가 정의하는 정확한 커브(weighted Bezier, double 정밀도)를 기준으로 성립하며 표본이 아니라 구간마다 증명된다. 키 값과 유한한 키 접선은 그대로 재현한다. 키 범위 밖 시각은 WrapMode로 먼저 매핑한다.
 - **기준은 Unity 평가기가 아니다.** weighted가 아닌 구간에서는 RCurve와 `AnimationCurve.Evaluate`가 값 오차 + float 반올림 안에서 일치한다. weighted 구간에서는 Unity의 solver가 자기 Bezier를 벗어날 수 있다. 500개 커브 차등 테스트에서 1개 커브가 0.02 어긋났고, 키 시각에서도 키 값을 돌려주지 않았다. RCurve는 정의를 따른다.

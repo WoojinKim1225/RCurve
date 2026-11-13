@@ -2,14 +2,14 @@
 
 Rational curve baking for Unity, with managed and Burst evaluators.
 
-**Preserves animation-key values and each finite in/out tangent exactly; between keys, stays within value and slope error bounds proven for every segment.** Steps, discontinuous derivatives and wrapping have explicit rules. This is a pre-1.0 release (**0.5.0**); the [Contract](#contract) is what 1.0 will keep.
+**Preserves animation-key values and each finite in/out tangent exactly; between keys, stays within value and slope error bounds proven for every segment.** Steps, discontinuous derivatives and wrapping have explicit rules. Version **1.0.0**: the [Contract](#contract) is what every 1.x release keeps.
 
 ## Install
 
 Unity Package Manager → **Install package from Git URL**:
 
 ```text
-https://github.com/WoojinKim1225/RCurve.git#v0.5.0
+https://github.com/WoojinKim1225/RCurve.git#v1.0.0
 ```
 
 Package ID: `com.woojinkim1225.rcurve`. Requires Git and a Unity 6 editor. Do not install alongside an older `Assets/RCurve` source copy; back up/migrate that copy first to avoid duplicate assemblies/GUIDs.
@@ -96,7 +96,7 @@ Sample scripts and their UI dependency are separate from the core runtime assemb
 
 ## Contract
 
-What 1.0 will keep, stated now so it can be checked:
+What every 1.x release keeps (a change to any of it is 2.0):
 
 - **Error bounds.** `MaxValueError` is absolute, in the curve's value units; `MaxSlopeError` is absolute, in value per time unit. Both hold for every time inside every baked segment, measured against the exact curve the keys define (the weighted Bezier, in double precision), and are proven per segment, not sampled. Key values and finite key tangents are reproduced exactly. Times outside the keys are mapped by the wrap modes first.
 - **Unity's evaluator is not the reference.** On unweighted segments RCurve and `AnimationCurve.Evaluate` agree to the value bound plus float rounding. On weighted segments Unity's own solver can miss its Bezier: in a 500-curve differential test it was off by 0.02 on one curve, not even returning the key's value at the key's time. RCurve follows the definition.
