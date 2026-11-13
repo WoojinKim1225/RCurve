@@ -47,21 +47,9 @@ namespace RCurve
                 Sample(source, left + (right - left) * i / (samples.Length - 1), out samples[i], out _);
             var fitter = new RationalCurveFitter(settings.Degree, end - start, samples, startSlope, endSlope);
             RationalCurveSegment segment = fitter.Fit(start, end, first, last, startSlope, endSlope, settings.Objective);
-            bool valid = true;
-            // Independent, denser grid. This is sampled validation, not a continuous error proof.
-            for (int i = 0; i <= 128; i++)
-            {
-                double u = i / 128.0;
-                Sample(source, left + (right - left) * u, out double value, out double slope);
-                double time = i == 128 ? end : start + (end - start) * u;
-                if (!(Math.Abs(segment.Evaluate(time) - value) <= settings.MaxValueError) ||
-                    !(Math.Abs(segment.EvaluateSlope(time) - slope) <= settings.MaxSlopeError))
-                {
-                    valid = false;
-                    break;
-                }
-            }
-            if (valid)
+            // Proven over the whole interval (not at samples): see SegmentCertificate.
+            if (SegmentCertificate.Holds(source, Parameter(source, left), Parameter(source, right), left, right, segment,
+                    settings.MaxValueError, settings.MaxSlopeError))
             {
                 times.Add(end);
                 values.Add(last);
@@ -75,21 +63,24 @@ namespace RCurve
             FitInterval(source, middle, right, depth + 1, settings, times, values, segments);
         }
 
+        // The Bezier parameter where the source reaches normalizedTime (X is nondecreasing).
+        private static double Parameter(AnimationCurveBezierSegment source, double normalizedTime)
+        {
+            if (!(normalizedTime > 0 && normalizedTime < 1)) return normalizedTime;
+            double low = 0;
+            double high = 1;
+            for (int i = 0; i < 55; i++)
+            {
+                double middle = (low + high) * 0.5;
+                if (source.Evaluate(middle).x < normalizedTime) low = middle;
+                else high = middle;
+            }
+            return (low + high) * 0.5;
+        }
+
         private static void Sample(AnimationCurveBezierSegment source, double normalizedTime, out double value, out double slope)
         {
-            double bezierParameter = normalizedTime;
-            if (normalizedTime > 0 && normalizedTime < 1)
-            {
-                double low = 0;
-                double high = 1;
-                for (int i = 0; i < 55; i++)
-                {
-                    bezierParameter = (low + high) * 0.5;
-                    if (source.Evaluate(bezierParameter).x < normalizedTime) low = bezierParameter;
-                    else high = bezierParameter;
-                }
-                bezierParameter = (low + high) * 0.5;
-            }
+            double bezierParameter = Parameter(source, normalizedTime);
             value = source.Evaluate(bezierParameter).y;
             var derivative = source.EvaluateDerivative(bezierParameter);
             slope = derivative.y / (derivative.x * (source.EndTime - source.StartTime));

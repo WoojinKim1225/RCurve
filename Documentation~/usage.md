@@ -184,4 +184,4 @@ Unity -batchmode -nographics -projectPath /path/to/isolated-project \
 
 속도에 pass/fail 한도를 걸지 않는다. 비용 모델은 특정 에디터/CPU에서 보정한 정책이며 플레이어/AOT의 최속 보장이 아니다.
 
-알려진 한계: dx/dt=0인 weighted 구간 거부, sampled fitting 오차는 연속 구간의 엄밀한 오차 증명이 아님, 큰 weighted 입력 일부에서 Minimax simplex 반복 한도 초과, JsonUtility의 double 십진 왕복에서 수 ULP 변화 가능. Unity 6.0, URP/HDRP 호스트 및 IL2CPP 실행 검증은 별도 작업이다.
+알려진 한계: dx/dt=0인 weighted 구간 거부, fitting 자체는 표본 기반(각 구간의 값·기울기 오차는 Bezier 매개변수 s에서 Bernstein 계수 부호로 구간 전체에 대해 증명하고, 증명되지 않으면 분할), 큰 weighted 입력 일부에서 Minimax simplex 반복 한도 초과, JsonUtility의 double 십진 왕복에서 수 ULP 변화 가능. Unity 6.0, URP/HDRP 호스트 및 IL2CPP 실행 검증은 별도 작업이다.

@@ -99,7 +99,7 @@ Sample scripts and their UI dependency are separate from the core runtime assemb
 - API baseline: **Unity 6000.0+**. Unexecuted editor versions are not certified; see [compatibility notes](Documentation~/compatibility.md).
 - Core `RCurve.Runtime` has no UnityEngine dependency. Unity serialization and fitting, Burst, Editor tooling, and sample UI are separate assemblies.
 - Dependencies declare Burst 1.8.30, Mathematics 1.3.2 and uGUI 2.0.0. Newer Unity editors may resolve built-in newer versions.
-- Weighted segments with stationary X are currently rejected. Fitting validates samples, not a continuous error proof.
+- Weighted segments with stationary X are currently rejected. The fit itself uses samples, but every baked segment's value and slope errors are proven over its whole interval (Bernstein sign test against the Bezier source); a segment that cannot be proven is subdivided.
 - Some large weighted inputs can exceed the Minimax simplex iteration limit. LeastSquares is a separate explicit option, not a silent fallback.
 - `EvaluateSlope` may return NaN at corners, steps and wrap seams with no common derivative. Input time is wrapped before evaluation.
 - Unity JSON round-tripping can shift doubles by a few ULP. Input signatures use semantic binary data rather than editor-version-dependent AnimationCurve JSON.

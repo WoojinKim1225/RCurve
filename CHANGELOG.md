@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- Each baked segment's value and slope errors are now proven over the whole interval instead of checked on a 129-point grid. In the Bezier parameter the source is polynomial, so each bound becomes the nonnegativity of a polynomial, tested by its Bernstein coefficients with de Casteljau refinement; a segment that cannot be proven is subdivided as before. On 300 random curves at default settings, the grid had passed 12 curves whose slope error exceeded the limit (up to 3.3x); they are now subdivided (+1.6% segments overall, value errors unchanged).
+
 ## 0.4.1
 
 - Added `StartTime`, `EndTime`, `StartValue` and `EndValue` (the first and last keys) to `BakedRationalCurve` and `RationalCurve`; they throw for a curve with no keys, and on `RationalCurve` are checked like an evaluation.
